@@ -12,7 +12,8 @@ export interface SmartlocDatabase {
   updatedAt: string;
 }
 
-const dataDirectory = path.join(process.cwd(), "data");
+const dataDirectory = process.env.SMARTLOC_DATA_DIR
+  ?? (process.env.VERCEL ? path.join("/tmp", "smartloc") : path.join(process.cwd(), "data"));
 const databasePath = path.join(dataDirectory, "smartloc-db.json");
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
