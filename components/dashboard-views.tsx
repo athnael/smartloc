@@ -547,13 +547,10 @@ export function LandingPageView() {
       if (editing) updateMedia(editing.id, input);
       else addMedia(input);
       toast.success(editing ? "Media landing page diperbarui." : "Media landing page ditambahkan.", {
-        description: "Membuka galeri landing page untuk melihat hasilnya."
+        description: "Media sudah tersimpan dan akan tampil di galeri landing page."
       });
       setOpen(false);
       setEditing(null);
-      window.setTimeout(() => {
-        window.location.href = "/#galeri";
-      }, 800);
     } catch {
       toast.error("Media belum tersimpan. Jika ini video, coba gunakan ukuran file yang lebih kecil.");
     }
