@@ -638,7 +638,15 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
     try {
       if (file.type.startsWith("image/")) {
         setType("image");
-        setUrl(await uploadMediaFile(file, "landing") ?? await compressLandingAdminPhoto(file));
+        let nextUrl = await uploadMediaFile(file, "landing").catch(() => null);
+        if (!nextUrl) {
+          if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+            setError("Gunakan foto JPG, PNG, atau WebP agar bisa diproses.");
+            return;
+          }
+          nextUrl = await compressLandingAdminPhoto(file);
+        }
+        setUrl(nextUrl);
         setFileName(file.name);
       } else if (file.type.startsWith("video/")) {
         if (file.size > maximumVideoSize) {
@@ -646,7 +654,8 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
           return;
         }
         setType("video");
-        setUrl(await uploadMediaFile(file, "landing") ?? await readFileAsDataUrl(file));
+        const nextUrl = await uploadMediaFile(file, "landing").catch(() => null) ?? await readFileAsDataUrl(file);
+        setUrl(nextUrl);
         setFileName(file.name);
       } else {
         setError("Gunakan file gambar atau video.");
@@ -779,7 +788,7 @@ function AlternativeForm({ initial, criteria, onSave, onCancel }: {
     }
     setIsProcessingPhoto(true);
     try {
-      const uploaded = await uploadMediaFile(file, "alternatives");
+      const uploaded = await uploadMediaFile(file, "alternatives").catch(() => null);
       const compressed = uploaded ?? await compressAlternativePhoto(file);
       setPhotoUrl(compressed);
     } catch {
