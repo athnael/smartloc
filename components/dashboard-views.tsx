@@ -13,6 +13,7 @@ import { Dialog, DialogContent } from "./ui/dialog";
 import { Field } from "./ui/field";
 import { Input } from "./ui/input";
 import { LocationMap } from "./location-map";
+import { uploadMediaFile } from "@/lib/client-media-upload";
 import { calculateRanking } from "@/lib/ranking";
 import { useSmartlocStore } from "@/lib/store";
 import type { Alternative, Criteria, ExpertDataset, LandingMedia, RankingMethod, RankingResult, User } from "@/lib/types";
@@ -637,7 +638,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
     try {
       if (file.type.startsWith("image/")) {
         setType("image");
-        setUrl(await compressLandingAdminPhoto(file));
+        setUrl(await uploadMediaFile(file, "landing") ?? await compressLandingAdminPhoto(file));
         setFileName(file.name);
       } else if (file.type.startsWith("video/")) {
         if (file.size > maximumVideoSize) {
@@ -645,7 +646,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
           return;
         }
         setType("video");
-        setUrl(await readFileAsDataUrl(file));
+        setUrl(await uploadMediaFile(file, "landing") ?? await readFileAsDataUrl(file));
         setFileName(file.name);
       } else {
         setError("Gunakan file gambar atau video.");
@@ -778,7 +779,8 @@ function AlternativeForm({ initial, criteria, onSave, onCancel }: {
     }
     setIsProcessingPhoto(true);
     try {
-      const compressed = await compressAlternativePhoto(file);
+      const uploaded = await uploadMediaFile(file, "alternatives");
+      const compressed = uploaded ?? await compressAlternativePhoto(file);
       setPhotoUrl(compressed);
     } catch {
       setPhotoError("Foto tidak dapat diproses. Coba pilih gambar lain.");

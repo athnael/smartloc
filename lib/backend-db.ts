@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { seedAlternatives, seedCriteria, seedExpertDatasets, seedLandingMedia, seedUsers } from "./seed";
+import { isSupabaseConfigured, readSupabaseDatabase, writeSupabaseDatabase } from "./supabase-db";
 import type { Alternative, Criteria, ExpertDataset, LandingMedia, User } from "./types";
 
 export interface SmartlocDatabase {
@@ -30,6 +31,21 @@ export function createSeedDatabase(): SmartlocDatabase {
 }
 
 export async function readDatabase(): Promise<SmartlocDatabase> {
+  if (isSupabaseConfigured()) {
+    const database = await readSupabaseDatabase();
+    const isEmpty = !database.users.length
+      && !database.criteria.length
+      && !database.alternatives.length
+      && !database.expertDatasets.length
+      && !database.landingMedia.length;
+    if (isEmpty) {
+      const seeded = createSeedDatabase();
+      await writeSupabaseDatabase(seeded);
+      return seeded;
+    }
+    return normalizeDatabase(database);
+  }
+
   await fs.mkdir(dataDirectory, { recursive: true });
   try {
     const raw = await fs.readFile(databasePath, "utf8");
@@ -45,6 +61,11 @@ export async function readDatabase(): Promise<SmartlocDatabase> {
 }
 
 export async function writeDatabase(database: SmartlocDatabase) {
+  if (isSupabaseConfigured()) {
+    await writeSupabaseDatabase(database);
+    return;
+  }
+
   await fs.mkdir(dataDirectory, { recursive: true });
   const next = { ...database, updatedAt: new Date().toISOString() };
   await fs.writeFile(databasePath, JSON.stringify(next, null, 2), "utf8");
