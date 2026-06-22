@@ -91,10 +91,29 @@ function methodFromSearch(request: NextRequest): RankingMethod {
 export async function GET(request: NextRequest, context: RouteContext) {
   const route = await parts(context);
   const [resource, id] = route;
-  const database = await readDatabase();
 
   if (!resource || resource === "health") {
-    return json({ ok: true, name: "SMARTLOC API", updatedAt: database.updatedAt });
+    return json({
+      ok: true,
+      name: "SMARTLOC API",
+      storage: {
+        supabaseUrl: Boolean(process.env.SUPABASE_URL),
+        supabaseServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+        bucket: process.env.SMARTLOC_SUPABASE_BUCKET ?? "smartloc-media"
+      }
+    });
+  }
+
+  let database;
+  try {
+    database = await readDatabase();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : "Database tidak dapat dibaca.";
+    return json({
+      ok: false,
+      message: "Database SMARTLOC belum bisa diakses. Periksa environment Supabase di Vercel dan tabel Supabase.",
+      detail
+    }, 500);
   }
 
   if (resource === "bootstrap") {
