@@ -1,0 +1,27 @@
+.next/
+.next-*/
+.next-dev-*.log
+node_modules/
+.pnpm-store/
+tsconfig.tsbuildinfo
+
+# Local runtime data/logs
+data/
+*.log
+env/
+
+# Local generated/exported artifacts
+outputs/
+public/tes.txt
+public/alternatives/
+.tmp_xlsx/
+.tmp_expert_workbooks/
+gitignore/
+
+# Environment files
+.env
+.env*.local
+
+# OS/editor
+.DS_Store
+Thumbs.db
