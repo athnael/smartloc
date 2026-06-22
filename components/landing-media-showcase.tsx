@@ -122,8 +122,8 @@ function VideoSlot({ videos, slot }: { videos: LandingMedia[]; slot: number }) {
             poster={video.posterUrl}
             autoPlay
             muted
+            loop={videos.length <= 1}
             playsInline
-            controls
             onEnded={nextVideo}
             className={`h-full w-full object-cover transition duration-500 ${isFading ? "opacity-0" : "opacity-100"}`}
           />

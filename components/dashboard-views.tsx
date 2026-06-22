@@ -588,7 +588,7 @@ export function LandingPageView() {
                 {item.type === "image" ? (
                   <img src={item.url} alt={item.title} className="aspect-[4/3] h-[190px] w-full rounded-xl object-cover sm:h-[210px]" />
                 ) : (
-                  <video src={item.url} poster={item.posterUrl} controls className="aspect-[4/3] h-[190px] w-full rounded-xl object-cover sm:h-[210px]" />
+                  <video src={item.url} poster={item.posterUrl} autoPlay muted loop playsInline className="aspect-[4/3] h-[190px] w-full rounded-xl object-cover sm:h-[210px]" />
                 )}
                 <Badge variant={item.type === "video" ? "coral" : "land"} className="absolute left-3 top-3">{item.type === "video" ? "Video" : "Foto"}</Badge>
               </div>
@@ -607,7 +607,7 @@ export function LandingPageView() {
         {!media.length ? <div className="p-12 text-center text-xs text-ink/45">Belum ada media. Tambahkan foto atau video untuk landing page.</div> : null}
       </section>
       <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) setEditing(null); }}>
-        <DialogContent title={editing ? "Edit Media Landing Page" : "Tambah Media Landing Page"} description="Pilih foto atau video dari perangkat. Setelah disimpan, halaman akan membuka galeri landing page untuk melihat hasilnya.">
+        <DialogContent title={editing ? "Edit Media Landing Page" : "Tambah Media Landing Page"} description="Pilih foto atau video dari perangkat. Setelah disimpan, media akan tampil di galeri landing page.">
           <LandingMediaForm initial={editing} onSave={save} onCancel={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
@@ -629,7 +629,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
   const [fileName, setFileName] = useState("");
-  const maximumVideoSize = 25 * 1024 * 1024;
+  const maximumVideoSize = 75 * 1024 * 1024;
 
   async function selectFile(file: File) {
     setError("");
@@ -641,7 +641,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
         setFileName(file.name);
       } else if (file.type.startsWith("video/")) {
         if (file.size > maximumVideoSize) {
-          setError("Video lokal maksimal 25 MB agar tetap ringan saat disimpan dan dibuka di landing page.");
+          setError("Video lokal maksimal 75 MB. Jika lebih besar, kompres video terlebih dahulu agar halaman tetap ringan.");
           return;
         }
         setType("video");
@@ -682,7 +682,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
           {type === "video" ? "Video 4:3" : "Foto 4:3"}
         </div>
       </Field>
-      <Field label="Pilih Foto/Video" hint="Foto dan video ditampilkan 4:3. Video maksimal 25 MB agar halaman tetap ringan." className="sm:col-span-2">
+      <Field label="Pilih Foto/Video" hint="Foto dan video ditampilkan 4:3. Video maksimal 75 MB agar halaman tetap ringan." className="sm:col-span-2">
         <label className={`inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-coral px-5 text-sm font-semibold text-white hover:bg-[#e85d00] ${processing ? "pointer-events-none opacity-60" : ""}`}>
           <Upload className="h-4 w-4" /> {processing ? "Memproses…" : "Pilih file"}
           <input
