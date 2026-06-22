@@ -61,7 +61,16 @@ type SupabaseLandingMediaRow = {
   created_at: string;
 };
 
-const supabaseUrl = process.env.SUPABASE_URL?.replace(/\/$/, "") ?? "";
+function normalizeSupabaseUrl(value?: string) {
+  return (value ?? "")
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\/rest\/v1$/i, "")
+    .replace(/\/storage\/v1$/i, "")
+    .replace(/\/auth\/v1$/i, "");
+}
+
+const supabaseUrl = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const storageBucket = process.env.SMARTLOC_SUPABASE_BUCKET ?? "smartloc-media";
 
