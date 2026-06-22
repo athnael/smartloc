@@ -53,15 +53,6 @@ function localCriteriaId(name: string) {
   return `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
 }
 
-function mergeById<T extends { id: string }>(primary: T[], secondary: T[]) {
-  const seen = new Set<string>();
-  return [...primary, ...secondary].filter((item) => {
-    if (seen.has(item.id)) return false;
-    seen.add(item.id);
-    return true;
-  });
-}
-
 export const useSmartlocStore = create<SmartlocState>()(
   persist(
     (set, get) => {
@@ -92,7 +83,7 @@ export const useSmartlocStore = create<SmartlocState>()(
               criteria: data.criteria,
               alternatives: data.alternatives,
               expertDatasets: data.expertDatasets,
-              landingMedia: mergeById(state.landingMedia, data.landingMedia),
+              landingMedia: data.landingMedia,
               apiReady: true
             }));
           } catch (error) {
