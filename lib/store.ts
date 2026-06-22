@@ -53,6 +53,15 @@ function localCriteriaId(name: string) {
   return `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`;
 }
 
+function mergeById<T extends { id: string }>(primary: T[], secondary: T[]) {
+  const seen = new Set<string>();
+  return [...primary, ...secondary].filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
 export const useSmartlocStore = create<SmartlocState>()(
   persist(
     (set, get) => {
@@ -77,14 +86,15 @@ export const useSmartlocStore = create<SmartlocState>()(
           try {
             const response = await apiRequest<BootstrapData>("/api/bootstrap");
             if (!response.data) return;
-            set({
-              users: response.data.users.map(normalizeApiUser),
-              criteria: response.data.criteria,
-              alternatives: response.data.alternatives,
-              expertDatasets: response.data.expertDatasets,
-              landingMedia: response.data.landingMedia,
+            const data = response.data;
+            set((state) => ({
+              users: data.users.map(normalizeApiUser),
+              criteria: data.criteria,
+              alternatives: data.alternatives,
+              expertDatasets: data.expertDatasets,
+              landingMedia: mergeById(state.landingMedia, data.landingMedia),
               apiReady: true
-            });
+            }));
           } catch (error) {
             console.warn("API belum tersedia, memakai data lokal:", error);
             set({ apiReady: false });

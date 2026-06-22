@@ -518,7 +518,7 @@ export function AlternativesView() {
         </DialogContent>
       </Dialog>
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
-        <DialogContent className="max-w-4xl" title="Impor Alternatif Dari Excel" description="Gunakan template agar nama kolom dan nilai kriteria dapat dibaca dengan tepat.">
+        <DialogContent className="max-w-4xl" title="Impor Alternatif Dari Excel" description="Gunakan template agar nama kolom dan nilai kriteria dapat dibaca dengan tepat. Foto lokasi diunggah manual dari form alternatif.">
           <AlternativeImport
             criteria={criteria}
             onImport={(items) => {
@@ -543,11 +543,20 @@ export function LandingPageView() {
   const [editing, setEditing] = useState<LandingMedia | null>(null);
 
   function save(input: Omit<LandingMedia, "id" | "createdAt">) {
-    if (editing) updateMedia(editing.id, input);
-    else addMedia(input);
-    toast.success(editing ? "Media landing page diperbarui." : "Media landing page ditambahkan.");
-    setOpen(false);
-    setEditing(null);
+    try {
+      if (editing) updateMedia(editing.id, input);
+      else addMedia(input);
+      toast.success(editing ? "Media landing page diperbarui." : "Media landing page ditambahkan.", {
+        description: "Membuka galeri landing page untuk melihat hasilnya."
+      });
+      setOpen(false);
+      setEditing(null);
+      window.setTimeout(() => {
+        window.location.href = "/#galeri";
+      }, 800);
+    } catch {
+      toast.error("Media belum tersimpan. Jika ini video, coba gunakan ukuran file yang lebih kecil.");
+    }
   }
 
   function remove(item: LandingMedia) {
@@ -601,7 +610,7 @@ export function LandingPageView() {
         {!media.length ? <div className="p-12 text-center text-xs text-ink/45">Belum ada media. Tambahkan foto atau video untuk landing page.</div> : null}
       </section>
       <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) setEditing(null); }}>
-        <DialogContent title={editing ? "Edit Media Landing Page" : "Tambah Media Landing Page"} description="Pilih foto atau video dari perangkat. Media baru tampil di landing page setelah tombol Simpan media ditekan.">
+        <DialogContent title={editing ? "Edit Media Landing Page" : "Tambah Media Landing Page"} description="Pilih foto atau video dari perangkat. Setelah disimpan, halaman akan membuka galeri landing page untuk melihat hasilnya.">
           <LandingMediaForm initial={editing} onSave={save} onCancel={() => setOpen(false)} />
         </DialogContent>
       </Dialog>
@@ -623,6 +632,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
   const [error, setError] = useState("");
   const [processing, setProcessing] = useState(false);
   const [fileName, setFileName] = useState("");
+  const maximumVideoSize = 25 * 1024 * 1024;
 
   async function selectFile(file: File) {
     setError("");
@@ -633,8 +643,8 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
         setUrl(await compressLandingAdminPhoto(file));
         setFileName(file.name);
       } else if (file.type.startsWith("video/")) {
-        if (file.size > 6 * 1024 * 1024) {
-          setError("Video lokal maksimal 6 MB agar aman tersimpan di browser.");
+        if (file.size > maximumVideoSize) {
+          setError("Video lokal maksimal 25 MB agar tetap ringan saat disimpan dan dibuka di landing page.");
           return;
         }
         setType("video");
@@ -675,7 +685,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
           {type === "video" ? "Video 4:3" : "Foto 4:3"}
         </div>
       </Field>
-      <Field label="Pilih Foto/Video" hint="Foto dan video ditampilkan 4:3. Klik Simpan media agar masuk ke landing page." className="sm:col-span-2">
+      <Field label="Pilih Foto/Video" hint="Foto dan video ditampilkan 4:3. Video maksimal 25 MB agar halaman tetap ringan." className="sm:col-span-2">
         <label className={`inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-coral px-5 text-sm font-semibold text-white hover:bg-[#e85d00] ${processing ? "pointer-events-none opacity-60" : ""}`}>
           <Upload className="h-4 w-4" /> {processing ? "Memproses…" : "Pilih file"}
           <input
@@ -699,7 +709,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
         </div>
       ) : null}
       <Field label="Keterangan" className="sm:col-span-2"><Input value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Keterangan singkat media" /></Field>
-      <div className="mt-3 flex justify-end gap-3 sm:col-span-2"><Button type="button" variant="outline" onClick={onCancel}>Batal</Button><Button type="submit">Simpan media</Button></div>
+      <div className="mt-3 flex justify-end gap-3 sm:col-span-2"><Button type="button" variant="outline" onClick={onCancel}>Batal</Button><Button type="submit" disabled={processing}>{processing ? "Memproses Media..." : "Simpan Media"}</Button></div>
     </form>
   );
 }
@@ -804,7 +814,7 @@ function AlternativeForm({ initial, criteria, onSave, onCancel }: {
       <Field label="Alamat" className="sm:col-span-2"><Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Alamat lengkap" /></Field>
       <Field label="Latitude"><Input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="Contoh: 1.4748" /></Field>
       <Field label="Longitude"><Input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="Contoh: 124.8421" /></Field>
-      <Field label="Foto Lokasi" error={photoError} hint="Unggah foto sendiri atau gunakan URL. Foto akan diperkecil otomatis agar ringan." className="sm:col-span-2">
+      <Field label="Foto Lokasi" error={photoError} hint="Unggah foto dari perangkat. Foto akan diperkecil otomatis agar ringan." className="sm:col-span-2">
         <div className="overflow-hidden rounded-2xl border border-orange-200 bg-mist/45">
           {photoUrl ? (
             <div className="relative h-48 bg-mist">
@@ -826,7 +836,7 @@ function AlternativeForm({ initial, criteria, onSave, onCancel }: {
               </div>
             </div>
           )}
-          <div className="grid gap-3 border-t border-orange-200 bg-white p-4 sm:grid-cols-[auto_1fr]">
+          <div className="border-t border-orange-200 bg-white p-4">
             <label className={`inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-coral px-5 text-sm font-semibold text-white hover:bg-[#e85d00] ${isProcessingPhoto ? "pointer-events-none opacity-60" : ""}`}>
               <Upload className="h-4 w-4" /> {isProcessingPhoto ? "Memproses foto…" : photoUrl ? "Ganti foto" : "Pilih foto"}
               <input
@@ -841,12 +851,6 @@ function AlternativeForm({ initial, criteria, onSave, onCancel }: {
                 }}
               />
             </label>
-            <Input
-              value={photoUrl.startsWith("data:") ? "" : photoUrl}
-              onChange={(event) => { setPhotoUrl(event.target.value); setPhotoError(""); }}
-              placeholder="Atau tempel URL foto"
-              disabled={photoUrl.startsWith("data:")}
-            />
           </div>
         </div>
       </Field>
@@ -908,7 +912,6 @@ function AlternativeImport({ criteria, onImport }: {
       alamat: "Jl. Contoh No. 1, Manado",
       latitude: 1.4748,
       longitude: 124.8421,
-      foto_url: "",
       ...Object.fromEntries(criteria.map((item) => [item.id, 10]))
     };
     const workbook = XLSX.utils.book_new();
@@ -945,7 +948,7 @@ function AlternativeImport({ criteria, onImport }: {
           address,
           latitude,
           longitude,
-          photoUrl: String(row.foto_url ?? "").trim() || "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80",
+          photoUrl: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=900&q=80",
           values: criterionValues
         });
       });
@@ -1101,9 +1104,34 @@ function ExpertImport({ onImport }: {
   async function downloadTemplate() {
     const XLSX = await import("xlsx");
     const workbook = XLSX.utils.book_new();
+    const sampleCriteria: Criteria[] = [
+      { id: "population", name: "Jumlah penduduk", weight: 25, kind: "benefit", unit: "jiwa", attribute: "Potensi pasar" },
+      { id: "area", name: "Luas daerah", weight: 15, kind: "benefit", unit: "km2", attribute: "Cakupan wilayah" },
+      { id: "distance", name: "Jarak ke pusat kota", weight: 20, kind: "cost", unit: "km", attribute: "Aksesibilitas" },
+      { id: "rent", name: "Harga sewa", weight: 25, kind: "cost", unit: "jt/bln", attribute: "Biaya operasional" },
+      { id: "competition", name: "Persaingan", weight: 15, kind: "cost", unit: "usaha", attribute: "Kompetitor sejenis" }
+    ];
+    const sampleAlternatives: Alternative[] = [
+      { id: "expert-alt-1", name: "Kawasan Megamas Expert", address: "Jl. Laksda John Lie, Manado", latitude: 1.4827, longitude: 124.8345, photoUrl: "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=900&q=80", values: { population: 32850, area: 3.64, distance: 1.2, rent: 18, competition: 42 } },
+      { id: "expert-alt-2", name: "Paal Dua Expert", address: "Jl. Yos Sudarso, Manado", latitude: 1.4878, longitude: 124.8596, photoUrl: "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=900&q=80", values: { population: 36940, area: 8.02, distance: 4.8, rent: 8, competition: 24 } },
+      { id: "expert-alt-3", name: "Mapanget Expert", address: "Jl. A.A. Maramis, Manado", latitude: 1.5229, longitude: 124.8914, photoUrl: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=900&q=80", values: { population: 63100, area: 49.75, distance: 10.4, rent: 6, competition: 16 } }
+    ];
+    const smart = calculateRanking("SMART", sampleCriteria, sampleAlternatives);
+    const saw = calculateRanking("SAW", sampleCriteria, sampleAlternatives);
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["Petunjuk"],
+      ["Isi sheet metadata, kriteria, dan alternatif. Sheet perhitungan/ranking hanya contoh hasil otomatis."],
+      ["Kolom id kriteria pada sheet alternatif harus sama dengan id pada sheet kriteria."],
+      ["Jenis kriteria hanya boleh benefit atau cost."],
+      ["Foto tidak diisi dari Excel. Foto alternatif dapat diunggah manual dari halaman Alternatif."]
+    ]), "petunjuk");
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([["nama_expert", "Tim Expert"], ["keahlian", "Perencanaan wilayah"], ["sumber", "Kajian Expert"], ["catatan", "Catatan dataset"]]), "metadata");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{ id: "population", nama: "Jumlah penduduk", bobot: 25, jenis: "benefit", satuan: "jiwa", atribut: "Potensi pasar" }, { id: "rent", nama: "Harga sewa", bobot: 25, jenis: "cost", satuan: "jt/bln", atribut: "Biaya operasional" }]), "kriteria");
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet([{ id: "lokasi-1", nama_lokasi: "Contoh Lokasi", alamat: "Manado", latitude: 1.48, longitude: 124.84, foto_url: "", population: 40000, rent: 8 }]), "alternatif");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(sampleCriteria.map((item) => ({ id: item.id, nama: item.name, bobot: item.weight, jenis: item.kind, satuan: item.unit, atribut: item.attribute }))), "kriteria");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(sampleAlternatives.map((item) => ({ id: item.id, nama_lokasi: item.name, alamat: item.address, latitude: item.latitude, longitude: item.longitude, ...item.values }))), "alternatif");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(smart.map((item) => ({ rank: item.rank, lokasi: item.alternative.name, skor: item.score, ...item.utilities }))), "perhitungan_smart");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(saw.map((item) => ({ rank: item.rank, lokasi: item.alternative.name, skor: item.score, ...item.utilities }))), "perhitungan_saw");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(smart.map((item) => ({ rank: item.rank, lokasi: item.alternative.name, skor_smart: item.score }))), "ranking_smart");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(saw.map((item) => ({ rank: item.rank, lokasi: item.alternative.name, skor_saw: item.score }))), "ranking_saw");
     XLSX.writeFile(workbook, "template-dataset-expert-smartloc.xlsx");
   }
 
@@ -1119,7 +1147,7 @@ function ExpertImport({ onImport }: {
       const criteriaRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets.kriteria, { defval: "" });
       const criteria: Criteria[] = criteriaRows.map((row, index) => ({ id: String(row.id || `kriteria-${index + 1}`).trim(), name: String(row.nama).trim(), weight: Number(row.bobot), kind: String(row.jenis).toLowerCase() === "cost" ? "cost" : "benefit", unit: String(row.satuan ?? ""), attribute: String(row.atribut ?? "") }));
       const alternativeRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets.alternatif, { defval: "" });
-      const alternatives: Alternative[] = alternativeRows.map((row, index) => ({ id: String(row.id || `expert-alt-${index + 1}`).trim(), name: String(row.nama_lokasi).trim(), address: String(row.alamat).trim(), latitude: Number(row.latitude), longitude: Number(row.longitude), photoUrl: String(row.foto_url || "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=900&q=80"), values: Object.fromEntries(criteria.map((criterion) => [criterion.id, Number(row[criterion.id])])) }));
+      const alternatives: Alternative[] = alternativeRows.map((row, index) => ({ id: String(row.id || `expert-alt-${index + 1}`).trim(), name: String(row.nama_lokasi).trim(), address: String(row.alamat).trim(), latitude: Number(row.latitude), longitude: Number(row.longitude), photoUrl: "https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=900&q=80", values: Object.fromEntries(criteria.map((criterion) => [criterion.id, Number(row[criterion.id])])) }));
       if (!criteria.length || !alternatives.length || criteria.some((item) => !item.name || !Number.isFinite(item.weight)) || alternatives.some((item) => !item.name || !Number.isFinite(item.latitude) || !Number.isFinite(item.longitude) || criteria.some((criterion) => !Number.isFinite(item.values[criterion.id])))) throw new Error();
       const smart = calculateRanking("SMART", criteria, alternatives);
       const saw = calculateRanking("SAW", criteria, alternatives);
@@ -1132,7 +1160,7 @@ function ExpertImport({ onImport }: {
   return (
     <div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Button variant="outline" onClick={downloadTemplate}><FileSpreadsheet className="h-4 w-4" /> Unduh template dataset</Button>
+        <Button variant="outline" onClick={downloadTemplate}><FileSpreadsheet className="h-4 w-4" /> Unduh Template Expert</Button>
         <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-coral px-5 text-sm font-semibold text-white hover:bg-[#e85d00]">
           <Upload className="h-4 w-4" /> Pilih file expert
           <input type="file" accept=".xlsx,.xls" className="sr-only" onChange={(event) => event.target.files?.[0] && readFile(event.target.files[0])} />
