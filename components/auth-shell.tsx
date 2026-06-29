@@ -42,7 +42,7 @@ export function AuthShell({ title, eyebrow, children, footer }: {
             ))}
           </div>
         </div>
-        <div className="relative text-[10px] uppercase tracking-[.18em] text-ink/45">SMARTLOC / MANADO / 2026</div>
+        <div className="relative text-[10px] uppercase tracking-[.18em] text-ink/45">SMARTLOC / 2026</div>
       </aside>
     </main>
   );

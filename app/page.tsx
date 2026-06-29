@@ -34,7 +34,7 @@ export default function HomePage() {
               Tempat yang tepat, <span className="italic text-sea">terlihat</span> dari datanya.
             </h1>
             <p className="mt-7 max-w-xl text-sm leading-7 text-ink/60 sm:text-base">
-              SMARTLOC membantu pelaku usaha di Manado membandingkan potensi lokasi secara objektif—dari kepadatan penduduk hingga biaya sewa—dalam satu atlas keputusan.
+              SMARTLOC membantu pelaku usaha di Manado membandingkan potensi lokasi secara objektif—dari kepadatan penduduk hingga biaya sewa—dalam satu sistem rekomendasi.
             </p>
             <div className="mt-9 flex flex-wrap gap-3">
               <Link href="/register" className={cn(buttonVariants({ size: "lg", variant: "coral" }))}>

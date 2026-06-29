@@ -13,7 +13,6 @@ export function Logo({ light = false, compact = false }: { light?: boolean; comp
       {!compact ? (
         <span>
           <span className="block text-base font-black tracking-[-.04em]">SMARTLOC</span>
-          <span className={cn("block text-[9px] font-bold uppercase tracking-[.24em]", light ? "text-white/60" : "text-sea")}>Manado decision atlas</span>
         </span>
       ) : null}
     </div>

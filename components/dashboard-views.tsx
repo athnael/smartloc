@@ -177,14 +177,47 @@ export function RankingView({ method, setMethod, results, criteria }: {
   const [calculation, setCalculation] = useState<RankingResult | null>(null);
   const filtered = results.filter((item) => item.alternative.name.toLowerCase().includes(query.toLowerCase()));
   const totalWeight = criteria.reduce((sum, item) => sum + item.weight, 0);
+  const normalizedWeightTotal = criteria.reduce((sum, item) => sum + Math.max(0, item.weight), 0) || 1;
+  const getMainFactors = (item: RankingResult) => criteria
+    .map((criterion) => {
+      const weight = Math.max(0, criterion.weight) / normalizedWeightTotal;
+      const utility = item.utilities[criterion.id] ?? 0;
+      return {
+        criterion,
+        contribution: utility * weight
+      };
+    })
+    .sort((a, b) => b.contribution - a.contribution)
+    .slice(0, 3);
 
   return (
     <>
       <PageIntro
-        eyebrow="Analisis Multi-Kriteria"
+        eyebrow="Rekomendasi Lokasi"
         title="Ranking Lokasi Usaha"
-        description={`Urutan dihitung dengan metode ${method}. Skor diperbarui otomatis saat data kriteria atau alternatif berubah.`}
+        description="Bandingkan lokasi dari skor tertinggi ke terendah. Admin dan user melihat tampilan yang sama agar hasil mudah dipahami."
       />
+      <div className="mb-5 rounded-2xl border border-ocean/10 bg-white p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h3 className="text-sm font-extrabold text-ocean">Pilih cara perhitungan</h3>
+            <p className="mt-1 text-xs leading-5 text-ink/55">
+              SMART adalah metode utama. SAW tersedia sebagai pembanding agar hasil ranking lebih mudah dicek.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-mist p-1 sm:w-[320px]">
+            {(["SMART", "SAW"] as RankingMethod[]).map((item) => (
+              <button
+                key={item}
+                onClick={() => setMethod(item)}
+                className={`rounded-lg px-4 py-3 text-xs font-extrabold transition ${method === item ? "bg-coral text-white shadow-sm" : "text-ink/60 hover:bg-white hover:text-coral"}`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
       {totalWeight !== 100 ? (
         <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
           Total bobot saat ini {totalWeight}%. Sistem menormalisasi bobot secara otomatis agar perhitungan tetap valid.
@@ -205,7 +238,7 @@ export function RankingView({ method, setMethod, results, criteria }: {
           <div className="grid gap-3 p-4">
             {filtered.map((item) => (
               <article key={item.alternative.id} className="rounded-2xl border border-orange-100 bg-[#fffdf8] p-4 shadow-sm transition hover:border-orange-300">
-                <div className="grid gap-4 xl:grid-cols-[minmax(220px,.95fr)_minmax(0,1.65fr)_150px] xl:items-center">
+                <div className="grid gap-4 xl:grid-cols-[minmax(260px,1fr)_minmax(0,1.2fr)_180px] xl:items-center">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl font-data text-sm font-bold ${item.rank === 1 ? "bg-coral text-white" : "bg-mist text-ocean"}`}>{item.rank}</span>
                     <img src={item.alternative.photoUrl} alt="" className="h-14 w-16 shrink-0 rounded-xl object-cover" />
@@ -214,17 +247,30 @@ export function RankingView({ method, setMethod, results, criteria }: {
                       <div className="mt-1 truncate text-[11px] font-medium text-ink/55">{item.alternative.address}</div>
                     </div>
                   </div>
-                  <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
-                    {criteria.map((criterion) => (
-                      <div key={criterion.id} className="min-w-0 rounded-xl bg-mist/70 px-3 py-2">
-                        <div className="truncate text-[10px] font-bold text-ink/60">{criterion.name}</div>
-                        <div className="mt-1 font-data text-xs font-extrabold text-ocean">{formatNumber(item.alternative.values[criterion.id] ?? 0)} <span className="font-medium text-ink/50">{criterion.unit}</span></div>
-                      </div>
-                    ))}
+                  <div className="min-w-0 rounded-2xl bg-mist/70 p-3">
+                    <div className="text-[10px] font-bold uppercase tracking-[.12em] text-ink/45">Faktor paling membantu skor</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {getMainFactors(item).map(({ criterion, contribution }) => (
+                        <div key={criterion.id} className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-ocean">
+                          {criterion.name} <span className="font-data text-coral">+{formatScore(contribution)}</span>
+                        </div>
+                      ))}
+                      {!criteria.length ? (
+                        <div className="text-xs text-ink/45">Belum ada kriteria.</div>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-[11px] leading-5 text-ink/55">
+                      Klik tombol perhitungan untuk melihat langkah nilai asli, nilai setara, bobot, dan hasil akhirnya.
+                    </p>
                   </div>
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-100 bg-white px-3 py-3 xl:flex-col xl:items-end">
-                    <div><div className="text-[10px] font-bold uppercase text-ink/55">Skor {method}</div><div className="font-data text-xl font-extrabold text-sea">{formatScore(item.score)}</div></div>
-                    <Button size="sm" variant="outline" onClick={() => setCalculation(item)}><Calculator className="h-3.5 w-3.5" /> Perhitungan</Button>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase text-ink/55">Skor {method}</div>
+                      <div className="font-data text-2xl font-extrabold text-sea">{formatScore(item.score)}</div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => setCalculation(item)}>
+                      <Calculator className="h-3.5 w-3.5" /> Lihat Perhitungan
+                    </Button>
                   </div>
                 </div>
               </article>
@@ -253,7 +299,7 @@ export function RankingView({ method, setMethod, results, criteria }: {
         </aside>
       </div>
       <Dialog open={Boolean(calculation)} onOpenChange={(open) => !open && setCalculation(null)}>
-        <DialogContent className="max-w-4xl" title={`Perhitungan ${method}: ${calculation?.alternative.name ?? ""}`} description="Rincian ini menunjukkan angka mentah, normalisasi, bobot, dan kontribusi setiap kriteria terhadap skor akhir.">
+        <DialogContent className="max-w-4xl" title={`Alasan ranking ${method}: ${calculation?.alternative.name ?? ""}`} description="Ringkasan ini menjelaskan mengapa lokasi mendapat skor tersebut, tanpa rumus teknis yang sulit dibaca.">
           {calculation ? <CalculationDetail method={method} result={calculation} results={results} criteria={criteria} /> : null}
         </DialogContent>
       </Dialog>
@@ -262,6 +308,131 @@ export function RankingView({ method, setMethod, results, criteria }: {
 }
 
 function CalculationDetail({ method, result, results, criteria }: {
+  method: RankingMethod;
+  result: RankingResult;
+  results: RankingResult[];
+  criteria: Criteria[];
+}) {
+  const totalWeight = criteria.reduce((sum, item) => sum + Math.max(0, item.weight), 0) || 1;
+  const formatPercent = (value: number) => `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(value * 100)}%`;
+  const details = criteria.map((criterion) => {
+    const raw = Number(result.alternative.values[criterion.id] ?? 0);
+    const utility = result.utilities[criterion.id] ?? 0;
+    const weight = Math.max(0, criterion.weight) / totalWeight;
+    const contribution = utility * weight;
+    const values = results.map((item) => Number(item.alternative.values[criterion.id] ?? 0));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    return { criterion, raw, utility, weight, contribution, min, max };
+  });
+  const topFactors = [...details].sort((a, b) => b.contribution - a.contribution).slice(0, 2);
+  const methodDescription = method === "SMART"
+    ? "SMART membaca tiap kriteria sebagai nilai setara, lalu mengalikan nilai tersebut dengan bobot kriteria."
+    : "SAW membandingkan nilai setiap lokasi dengan nilai terbaik pada tiap kriteria, lalu mengalikannya dengan bobot.";
+
+  return (
+    <div className="space-y-5">
+      <section className="rounded-2xl bg-ocean p-5 text-white">
+        <div className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-center">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[.16em] text-white/55">Lokasi yang dihitung</div>
+            <h3 className="mt-2 text-xl font-extrabold">{result.alternative.name}</h3>
+            <p className="mt-1 text-xs leading-5 text-white/65">{result.alternative.address}</p>
+          </div>
+          <div className="rounded-2xl bg-white/10 px-5 py-4">
+            <div className="text-[10px] font-bold uppercase tracking-[.12em] text-white/55">Peringkat</div>
+            <div className="mt-1 font-data text-3xl font-black text-land">#{result.rank}</div>
+          </div>
+          <div className="rounded-2xl bg-white px-5 py-4 text-ocean">
+            <div className="text-[10px] font-bold uppercase tracking-[.12em] text-ink/45">Skor {method}</div>
+            <div className="mt-1 font-data text-3xl font-black text-coral">{formatScore(result.score)}</div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-orange-100 bg-[#fffdf8] p-5">
+        <h3 className="text-sm font-extrabold text-ocean">Ringkasan sederhana</h3>
+        <p className="mt-2 text-xs leading-6 text-ink/65">{methodDescription}</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl bg-white p-4">
+            <div className="text-[10px] font-bold uppercase text-ink/45">Langkah 1</div>
+            <div className="mt-2 text-sm font-bold text-ocean">Nilai lokasi dibaca</div>
+            <p className="mt-1 text-xs leading-5 text-ink/55">Contoh: jumlah penduduk, luas daerah, jarak, sewa, dan persaingan.</p>
+          </div>
+          <div className="rounded-xl bg-white p-4">
+            <div className="text-[10px] font-bold uppercase text-ink/45">Langkah 2</div>
+            <div className="mt-2 text-sm font-bold text-ocean">Nilai disetarakan</div>
+            <p className="mt-1 text-xs leading-5 text-ink/55">Semua kriteria dibuat setara dalam skala 0 sampai 100%.</p>
+          </div>
+          <div className="rounded-xl bg-white p-4">
+            <div className="text-[10px] font-bold uppercase text-ink/45">Langkah 3</div>
+            <div className="mt-2 text-sm font-bold text-ocean">Dikalikan bobot</div>
+            <p className="mt-1 text-xs leading-5 text-ink/55">Kriteria dengan bobot lebih besar memberi pengaruh lebih besar.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-ocean/10 bg-white p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="text-sm font-extrabold text-ocean">Perhitungan per kriteria</h3>
+            <p className="mt-1 text-xs text-ink/55">Sumbangan setiap kriteria dijumlahkan menjadi skor akhir.</p>
+          </div>
+          <div className="text-xs font-bold text-coral">Skor akhir: {formatScore(result.score)}</div>
+        </div>
+        <div className="mt-4 overflow-hidden rounded-2xl border border-orange-100">
+          <div className="hidden grid-cols-[1.1fr_.9fr_.8fr_.8fr_.8fr] gap-3 bg-mist px-4 py-3 text-[10px] font-black uppercase tracking-[.12em] text-ink/45 md:grid">
+            <div>Kriteria</div>
+            <div>Nilai asli</div>
+            <div>Nilai setara</div>
+            <div>Bobot</div>
+            <div>Sumbangan</div>
+          </div>
+          <div className="divide-y divide-orange-100">
+            {details.map(({ criterion, raw, utility, weight, contribution, min, max }) => (
+              <div key={criterion.id} className="grid gap-3 px-4 py-4 text-xs md:grid-cols-[1.1fr_.9fr_.8fr_.8fr_.8fr] md:items-center">
+                <div>
+                  <div className="font-extrabold text-ocean">{criterion.name}</div>
+                  <div className="mt-1 text-[11px] text-ink/50">
+                    {criterion.kind === "benefit" ? "Semakin besar semakin baik" : "Semakin kecil semakin baik"}
+                  </div>
+                </div>
+                <div>
+                  <div className="md:hidden text-[10px] font-bold uppercase text-ink/40">Nilai asli</div>
+                  <div className="font-data font-bold text-ocean">{formatNumber(raw)} <span className="font-sans text-ink/45">{criterion.unit}</span></div>
+                  <div className="mt-1 text-[10px] text-ink/40">Rentang {formatNumber(min)} - {formatNumber(max)}</div>
+                </div>
+                <div>
+                  <div className="md:hidden text-[10px] font-bold uppercase text-ink/40">Nilai setara</div>
+                  <div className="font-data font-bold text-sea">{formatPercent(utility)}</div>
+                </div>
+                <div>
+                  <div className="md:hidden text-[10px] font-bold uppercase text-ink/40">Bobot</div>
+                  <div className="font-data font-bold text-ocean">{formatPercent(weight)}</div>
+                </div>
+                <div>
+                  <div className="md:hidden text-[10px] font-bold uppercase text-ink/40">Sumbangan</div>
+                  <div className="font-data text-sm font-black text-coral">{formatScore(contribution)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl bg-mist p-5">
+        <h3 className="text-sm font-extrabold text-ocean">Kesimpulan</h3>
+        <p className="mt-2 text-xs leading-6 text-ink/65">
+          Lokasi ini berada di peringkat <span className="font-data font-bold text-coral">#{result.rank}</span> karena memiliki sumbangan skor terbesar dari{" "}
+          {topFactors.map((item) => item.criterion.name).join(" dan ") || "kriteria yang tersedia"}.
+          Setelah seluruh sumbangan dijumlahkan, skor akhirnya adalah <span className="font-data font-bold text-coral">{formatScore(result.score)}</span>.
+        </p>
+      </section>
+    </div>
+  );
+}
+
+function CalculationDetailLegacy({ method, result, results, criteria }: {
   method: RankingMethod;
   result: RankingResult;
   results: RankingResult[];
