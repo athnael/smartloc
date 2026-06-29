@@ -299,7 +299,7 @@ export function RankingView({ method, setMethod, results, criteria }: {
         </aside>
       </div>
       <Dialog open={Boolean(calculation)} onOpenChange={(open) => !open && setCalculation(null)}>
-        <DialogContent className="max-w-5xl" title={`Perhitungan manual ${method}: ${calculation?.alternative.name ?? ""}`} description="Lihat asal bobot, nilai minimum dan maksimum, rumus normalisasi, serta cara skor akhir diperoleh.">
+        <DialogContent className="max-w-6xl" title={`Perhitungan manual ${method}: ${calculation?.alternative.name ?? ""}`} description="Tabel perhitungan dibuat berurutan dari kriteria, nilai asli, normalisasi, bobot, penjumlahan, sampai skor akhir.">
           {calculation ? <CalculationDetail method={method} result={calculation} results={results} criteria={criteria} /> : null}
         </DialogContent>
       </Dialog>
@@ -314,49 +314,48 @@ function CalculationDetail({ method, result, results, criteria }: {
   criteria: Criteria[];
 }) {
   const totalWeight = criteria.reduce((sum, item) => sum + Math.max(0, item.weight), 0) || 1;
-  const formatPercent = (value: number) => `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(value * 100)}%`;
   const formatDecimal = (value: number) => new Intl.NumberFormat("id-ID", { maximumFractionDigits: 3 }).format(value);
-  const details = criteria.map((criterion) => {
-    const raw = Number(result.alternative.values[criterion.id] ?? 0);
-    const utility = result.utilities[criterion.id] ?? 0;
-    const weight = Math.max(0, criterion.weight) / totalWeight;
-    const contribution = utility * weight;
+  const criteriaMeta = criteria.map((criterion) => {
     const values = results.map((item) => Number(item.alternative.values[criterion.id] ?? 0));
     const min = Math.min(...values);
     const max = Math.max(...values);
     const positiveValues = values.filter((value) => value > 0);
     const positiveMin = positiveValues.length ? Math.min(...positiveValues) : 0;
-    let formula = "";
-    let substitution = "";
+    const weight = Math.max(0, criterion.weight) / totalWeight;
+    const formula = method === "SMART"
+      ? max === min
+        ? "Nilai sama = 1"
+        : criterion.kind === "benefit"
+          ? "(x - min) / (max - min)"
+          : "(max - x) / (max - min)"
+      : criterion.kind === "benefit"
+        ? "x / max"
+        : "min / x";
 
-    if (method === "SMART") {
-      if (max === min) {
-        formula = "Nilai semua alternatif sama, maka nilai setara = 1";
-        substitution = "1";
-      } else if (criterion.kind === "benefit") {
-        formula = "(nilai lokasi - nilai minimum) / (nilai maksimum - nilai minimum)";
-        substitution = `(${formatDecimal(raw)} - ${formatDecimal(min)}) / (${formatDecimal(max)} - ${formatDecimal(min)}) = ${formatScore(utility)}`;
-      } else {
-        formula = "(nilai maksimum - nilai lokasi) / (nilai maksimum - nilai minimum)";
-        substitution = `(${formatDecimal(max)} - ${formatDecimal(raw)}) / (${formatDecimal(max)} - ${formatDecimal(min)}) = ${formatScore(utility)}`;
-      }
-    } else if (criterion.kind === "benefit") {
-      formula = "nilai lokasi / nilai maksimum";
-      substitution = max === 0 ? "Nilai maksimum 0, maka nilai setara = 1" : `${formatDecimal(raw)} / ${formatDecimal(max)} = ${formatScore(utility)}`;
-    } else {
-      formula = "nilai minimum / nilai lokasi";
-      substitution = raw === 0
-        ? `Nilai lokasi 0, maka nilai setara = ${formatScore(utility)}`
-        : `${formatDecimal(positiveMin)} / ${formatDecimal(raw)} = ${formatScore(utility)}`;
-    }
-
-    return { criterion, raw, utility, weight, contribution, min, max, positiveMin, formula, substitution };
+    return { criterion, min, max, positiveMin, weight, formula };
   });
-  const topFactors = [...details].sort((a, b) => b.contribution - a.contribution).slice(0, 2);
-  const methodDescription = method === "SMART"
-    ? "SMART membaca tiap kriteria sebagai nilai setara, lalu mengalikan nilai tersebut dengan bobot kriteria."
-    : "SAW membandingkan nilai setiap lokasi dengan nilai terbaik pada tiap kriteria, lalu mengalikannya dengan bobot.";
-  const contributionSum = details.reduce((sum, item) => sum + item.contribution, 0);
+  const selectedWeighted = criteriaMeta.map(({ criterion, weight }) => (result.utilities[criterion.id] ?? 0) * weight);
+  const selectedTotal = selectedWeighted.reduce((sum, value) => sum + value, 0);
+
+  function rawValue(item: RankingResult, criterionId: string) {
+    return Number(item.alternative.values[criterionId] ?? 0);
+  }
+
+  function weightedValue(item: RankingResult, criterionId: string) {
+    const meta = criteriaMeta.find((entry) => entry.criterion.id === criterionId);
+    return (item.utilities[criterionId] ?? 0) * (meta?.weight ?? 0);
+  }
+
+  function isSelected(item: RankingResult) {
+    return item.alternative.id === result.alternative.id;
+  }
+
+  function tableRowClass(item: RankingResult) {
+    return isSelected(item) ? "bg-orange-50 font-extrabold text-ocean" : "bg-white text-ink/75";
+  }
+
+  const tableHeadClass = "bg-ocean px-3 py-3 text-left text-[10px] font-black uppercase tracking-[.12em] text-white";
+  const tableCellClass = "border-b border-orange-100 px-3 py-3 text-xs";
 
   return (
     <div className="space-y-5">
@@ -379,121 +378,184 @@ function CalculationDetail({ method, result, results, criteria }: {
       </section>
 
       <section className="rounded-2xl border border-orange-100 bg-[#fffdf8] p-5">
-        <h3 className="text-sm font-extrabold text-ocean">Cara membaca hitungan</h3>
-        <p className="mt-2 text-xs leading-6 text-ink/65">{methodDescription}</p>
-        <div className="mt-4 grid gap-3 lg:grid-cols-4">
-          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
-            <div className="text-[10px] font-black uppercase text-blue-700">1. Data asli</div>
-            <p className="mt-2 text-xs leading-5 text-blue-950/75">Nilai lokasi diambil dari data alternatif, misalnya penduduk, jarak, sewa, dan persaingan.</p>
-          </div>
-          <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
-            <div className="text-[10px] font-black uppercase text-amber-700">2. Min / max</div>
-            <p className="mt-2 text-xs leading-5 text-amber-950/75">Nilai minimum dan maksimum diambil dari seluruh alternatif pada kriteria yang sama.</p>
-          </div>
-          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
-            <div className="text-[10px] font-black uppercase text-emerald-700">3. Bobot</div>
-            <p className="mt-2 text-xs leading-5 text-emerald-950/75">Bobot desimal didapat dari bobot kriteria dibagi total bobot. Contoh 20 / 100 = 0,2.</p>
-          </div>
-          <div className="rounded-xl border border-orange-100 bg-orange-50 p-4">
-            <div className="text-[10px] font-black uppercase text-coral">4. Skor</div>
-            <p className="mt-2 text-xs leading-5 text-orange-950/75">Nilai setara dikalikan bobot. Semua hasilnya dijumlahkan menjadi skor akhir.</p>
-          </div>
+        <h3 className="text-sm font-extrabold text-ocean">Urutan Perhitungan</h3>
+        <p className="mt-2 text-xs leading-6 text-ink/65">
+          Baris berwarna oranye menunjukkan lokasi yang sedang dipilih. Nilai dihitung untuk semua alternatif agar min, max, normalisasi, dan ranking terlihat jelas.
+        </p>
+      </section>
+
+      <section className="rounded-2xl border border-ocean/10 bg-white p-5">
+        <h3 className="text-sm font-extrabold text-ocean">1. Tabel Kriteria, Bobot, Dan Atribut</h3>
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-orange-100">
+          <table className="w-full min-w-[720px] border-collapse">
+            <thead>
+              <tr>
+                <th className={tableHeadClass}>No</th>
+                <th className={tableHeadClass}>Kriteria</th>
+                <th className={tableHeadClass}>Bobot Awal</th>
+                <th className={tableHeadClass}>Bobot Desimal</th>
+                <th className={tableHeadClass}>Atribut</th>
+                <th className={tableHeadClass}>Keterangan</th>
+              </tr>
+            </thead>
+            <tbody>
+              {criteriaMeta.map(({ criterion, weight }, index) => (
+                <tr key={criterion.id} className="bg-white">
+                  <td className={tableCellClass}>{index + 1}</td>
+                  <td className={`${tableCellClass} font-bold text-ocean`}>{criterion.name}</td>
+                  <td className={`${tableCellClass} font-data`}>{criterion.weight}</td>
+                  <td className={`${tableCellClass} font-data text-emerald-700`}>{criterion.weight} / {formatDecimal(totalWeight)} = {formatScore(weight)}</td>
+                  <td className={tableCellClass}>{criterion.kind === "benefit" ? "Benefit" : "Cost"}</td>
+                  <td className={tableCellClass}>{criterion.kind === "benefit" ? "Nilai lebih besar lebih baik" : "Nilai lebih kecil lebih baik"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
       <section className="rounded-2xl border border-ocean/10 bg-white p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h3 className="text-sm font-extrabold text-ocean">Perhitungan per kriteria</h3>
-            <p className="mt-1 text-xs text-ink/55">Sumbangan setiap kriteria dijumlahkan menjadi skor akhir.</p>
+        <h3 className="text-sm font-extrabold text-ocean">2. Tabel Nilai Asli Alternatif Dan Nilai Min Max</h3>
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-orange-100">
+          <table className="w-full min-w-[900px] border-collapse">
+            <thead>
+              <tr>
+                <th className={tableHeadClass}>No</th>
+                <th className={tableHeadClass}>Alternatif</th>
+                {criteriaMeta.map(({ criterion }) => <th key={criterion.id} className={tableHeadClass}>{criterion.name}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((item, index) => (
+                <tr key={item.alternative.id} className={tableRowClass(item)}>
+                  <td className={tableCellClass}>{index + 1}</td>
+                  <td className={`${tableCellClass} min-w-[180px]`}>{item.alternative.name}</td>
+                  {criteriaMeta.map(({ criterion }) => (
+                    <td key={criterion.id} className={`${tableCellClass} font-data`}>{formatNumber(rawValue(item, criterion.id))}</td>
+                  ))}
+                </tr>
+              ))}
+              <tr className="bg-amber-50 font-black text-amber-900">
+                <td className={tableCellClass} colSpan={2}>Nilai Minimum</td>
+                {criteriaMeta.map(({ criterion, min }) => <td key={criterion.id} className={`${tableCellClass} font-data`}>{formatNumber(min)}</td>)}
+              </tr>
+              <tr className="bg-blue-50 font-black text-blue-950">
+                <td className={tableCellClass} colSpan={2}>Nilai Maksimum</td>
+                {criteriaMeta.map(({ criterion, max }) => <td key={criterion.id} className={`${tableCellClass} font-data`}>{formatNumber(max)}</td>)}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-ocean/10 bg-white p-5">
+        <h3 className="text-sm font-extrabold text-ocean">3. Tabel Hasil Normalisasi {method}</h3>
+        <div className="mt-3 rounded-xl bg-mist p-4 text-xs leading-6 text-ink/65">
+          Rumus normalisasi:
+          <div className="mt-2 grid gap-2 md:grid-cols-2">
+            {criteriaMeta.map(({ criterion, formula }) => (
+              <div key={criterion.id} className="rounded-lg bg-white px-3 py-2">
+                <span className="font-bold text-ocean">{criterion.name}</span>: <span className="font-data">{formula}</span>
+              </div>
+            ))}
           </div>
-          <div className="text-xs font-bold text-coral">Skor akhir: {formatScore(result.score)}</div>
         </div>
-        <div className="mt-4 space-y-4">
-          {details.map(({ criterion, raw, utility, weight, contribution, min, max, positiveMin, formula, substitution }) => (
-            <article key={criterion.id} className="overflow-hidden rounded-2xl border border-orange-100 bg-[#fffdf8]">
-              <div className="flex flex-col gap-3 border-b border-orange-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h4 className="text-sm font-extrabold text-ocean">{criterion.name}</h4>
-                  <p className="mt-1 text-[11px] leading-5 text-ink/55">
-                    {criterion.kind === "benefit" ? "Benefit: semakin besar nilainya semakin baik." : "Cost: semakin kecil nilainya semakin baik."}
-                  </p>
-                </div>
-                <Badge variant={criterion.kind === "benefit" ? "land" : "coral"}>
-                  {criterion.kind === "benefit" ? "Benefit" : "Cost"}
-                </Badge>
-              </div>
-
-              <div className="grid gap-3 p-4 lg:grid-cols-4">
-                <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
-                  <div className="text-[10px] font-black uppercase tracking-[.1em] text-blue-700">Data asli</div>
-                  <div className="mt-2 font-data text-lg font-black text-blue-950">{formatNumber(raw)}</div>
-                  <div className="mt-1 text-[11px] text-blue-950/65">{criterion.unit || "nilai"} lokasi ini</div>
-                </div>
-                <div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
-                  <div className="text-[10px] font-black uppercase tracking-[.1em] text-amber-700">Min / max</div>
-                  <div className="mt-2 font-data text-sm font-black text-amber-950">Min {formatNumber(min)} · Max {formatNumber(max)}</div>
-                  <div className="mt-1 text-[11px] leading-5 text-amber-950/65">
-                    Diambil dari {results.length} alternatif.
-                    {method === "SAW" && criterion.kind === "cost" ? ` Min cost yang dipakai: ${formatNumber(positiveMin)}.` : ""}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                  <div className="text-[10px] font-black uppercase tracking-[.1em] text-emerald-700">Bobot</div>
-                  <div className="mt-2 font-data text-lg font-black text-emerald-950">{formatScore(weight)}</div>
-                  <div className="mt-1 text-[11px] leading-5 text-emerald-950/65">
-                    Dari {criterion.weight} / {formatDecimal(totalWeight)} = {formatScore(weight)}
-                  </div>
-                </div>
-                <div className="rounded-xl border border-orange-100 bg-orange-50 p-3">
-                  <div className="text-[10px] font-black uppercase tracking-[.1em] text-coral">Sumbangan skor</div>
-                  <div className="mt-2 font-data text-lg font-black text-coral">{formatScore(contribution)}</div>
-                  <div className="mt-1 text-[11px] leading-5 text-orange-950/65">
-                    {formatScore(utility)} × {formatScore(weight)}
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-3 border-t border-orange-100 p-4 lg:grid-cols-[1.2fr_.8fr]">
-                <div className="rounded-xl bg-white p-4">
-                  <div className="text-[10px] font-black uppercase tracking-[.12em] text-ink/45">Rumus normalisasi</div>
-                  <div className="mt-2 text-xs font-bold leading-6 text-ocean">{formula}</div>
-                  <div className="mt-2 rounded-lg bg-mist px-3 py-2 font-data text-xs font-bold leading-6 text-ink">
-                    {substitution}
-                  </div>
-                </div>
-                <div className="rounded-xl bg-ocean p-4 text-white">
-                  <div className="text-[10px] font-black uppercase tracking-[.12em] text-white/50">Hasil kriteria</div>
-                  <div className="mt-2 text-xs leading-6 text-white/75">
-                    Nilai setara <span className="font-data font-black text-land">{formatScore(utility)}</span> dikali bobot{" "}
-                    <span className="font-data font-black text-land">{formatScore(weight)}</span> menghasilkan{" "}
-                    <span className="font-data font-black text-land">{formatScore(contribution)}</span>.
-                  </div>
-                </div>
-              </div>
-            </article>
-          ))}
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-orange-100">
+          <table className="w-full min-w-[900px] border-collapse">
+            <thead>
+              <tr>
+                <th className={tableHeadClass}>No</th>
+                <th className={tableHeadClass}>Alternatif</th>
+                {criteriaMeta.map(({ criterion }) => <th key={criterion.id} className={tableHeadClass}>{criterion.name}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((item, index) => (
+                <tr key={item.alternative.id} className={tableRowClass(item)}>
+                  <td className={tableCellClass}>{index + 1}</td>
+                  <td className={`${tableCellClass} min-w-[180px]`}>{item.alternative.name}</td>
+                  {criteriaMeta.map(({ criterion }) => (
+                    <td key={criterion.id} className={`${tableCellClass} font-data text-sea`}>{formatScore(item.utilities[criterion.id] ?? 0)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-orange-100 bg-white p-5">
-        <h3 className="text-sm font-extrabold text-ocean">Penjumlahan skor akhir</h3>
-        <div className="mt-3 rounded-xl bg-mist p-4 font-data text-xs font-bold leading-6 text-ink">
-          {details.map((item) => formatScore(item.contribution)).join(" + ")} = {formatScore(contributionSum)}
+      <section className="rounded-2xl border border-ocean/10 bg-white p-5">
+        <h3 className="text-sm font-extrabold text-ocean">4. Tabel Normalisasi Dikali Bobot</h3>
+        <p className="mt-2 text-xs leading-6 text-ink/60">Setiap nilai normalisasi dikalikan bobot desimal pada tabel kriteria.</p>
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-orange-100">
+          <table className="w-full min-w-[900px] border-collapse">
+            <thead>
+              <tr>
+                <th className={tableHeadClass}>No</th>
+                <th className={tableHeadClass}>Alternatif</th>
+                {criteriaMeta.map(({ criterion, weight }) => <th key={criterion.id} className={tableHeadClass}>{criterion.name} × {formatScore(weight)}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((item, index) => (
+                <tr key={item.alternative.id} className={tableRowClass(item)}>
+                  <td className={tableCellClass}>{index + 1}</td>
+                  <td className={`${tableCellClass} min-w-[180px]`}>{item.alternative.name}</td>
+                  {criteriaMeta.map(({ criterion }) => (
+                    <td key={criterion.id} className={`${tableCellClass} font-data text-coral`}>{formatScore(weightedValue(item, criterion.id))}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <p className="mt-3 text-xs leading-6 text-ink/60">
-          Jadi skor akhir metode {method} untuk {result.alternative.name} adalah{" "}
-          <span className="font-data font-black text-coral">{formatScore(result.score)}</span>.
-        </p>
       </section>
 
-      <section className="rounded-2xl bg-mist p-5">
-        <h3 className="text-sm font-extrabold text-ocean">Kesimpulan</h3>
-        <p className="mt-2 text-xs leading-6 text-ink/65">
-          Lokasi ini berada di peringkat <span className="font-data font-bold text-coral">#{result.rank}</span> karena memiliki sumbangan skor terbesar dari{" "}
-          {topFactors.map((item) => item.criterion.name).join(" dan ") || "kriteria yang tersedia"}.
-          Setelah seluruh sumbangan dijumlahkan, skor akhirnya adalah <span className="font-data font-bold text-coral">{formatScore(result.score)}</span>.
-        </p>
+      <section className="rounded-2xl border border-ocean/10 bg-white p-5">
+        <h3 className="text-sm font-extrabold text-ocean">5. Tabel Penjumlahan Semua Hasil Kriteria</h3>
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-orange-100">
+          <table className="w-full min-w-[720px] border-collapse">
+            <thead>
+              <tr>
+                <th className={tableHeadClass}>Rank</th>
+                <th className={tableHeadClass}>Alternatif</th>
+                <th className={tableHeadClass}>Penjumlahan</th>
+                <th className={tableHeadClass}>Total Skor</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((item) => {
+                const parts = criteriaMeta.map(({ criterion }) => weightedValue(item, criterion.id));
+                const total = parts.reduce((sum, value) => sum + value, 0);
+                return (
+                  <tr key={item.alternative.id} className={tableRowClass(item)}>
+                    <td className={tableCellClass}>#{item.rank}</td>
+                    <td className={`${tableCellClass} min-w-[180px]`}>{item.alternative.name}</td>
+                    <td className={`${tableCellClass} min-w-[280px] font-data text-[11px]`}>{parts.map(formatScore).join(" + ")}</td>
+                    <td className={`${tableCellClass} font-data font-black text-coral`}>{formatScore(total)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-2xl bg-ocean p-5 text-white">
+        <h3 className="text-sm font-extrabold">6. Skor Akhir Lokasi Yang Dipilih</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="rounded-xl bg-white/10 p-4">
+            <div className="text-[10px] font-black uppercase tracking-[.12em] text-white/55">Penjumlahan lokasi terpilih</div>
+            <div className="mt-2 break-words font-data text-xs font-bold leading-6 text-white/80">
+              {selectedWeighted.map(formatScore).join(" + ")} = {formatScore(selectedTotal)}
+            </div>
+          </div>
+          <div className="rounded-xl bg-white p-5 text-ocean">
+            <div className="text-[10px] font-black uppercase tracking-[.12em] text-ink/45">Skor {method}</div>
+            <div className="mt-2 font-data text-4xl font-black text-coral">{formatScore(result.score)}</div>
+            <div className="mt-1 text-xs font-bold text-ink/60">Peringkat #{result.rank}</div>
+          </div>
+        </div>
       </section>
     </div>
   );
