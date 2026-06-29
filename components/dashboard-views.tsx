@@ -124,7 +124,7 @@ export function OverviewView({ user, results, onNavigate }: {
 
   return (
     <>
-      <PageIntro eyebrow="Atlas Peluang Anda" title={`Halo, ${user.name.split(" ")[0]}. Mau Buka Usaha Di Mana?`} description="Mulai dari rekomendasi berbasis data, lalu lihat konteks setiap lokasi langsung pada peta." />
+      <PageIntro eyebrow="Rekomendasi Anda" title={`Halo, ${user.name.split(" ")[0]}. Mau Buka Usaha Di Mana?`} description="Mulai dari rekomendasi berbasis data, lalu lihat konteks setiap lokasi langsung pada peta." />
       <div className="grid gap-6 xl:grid-cols-[1.15fr_.85fr]">
         <section className="topography relative min-h-[360px] overflow-hidden rounded-[2rem] p-7 text-ink sm:p-9">
           <div className="relative z-10 flex h-full max-w-xl flex-col justify-between">
@@ -299,7 +299,7 @@ export function RankingView({ method, setMethod, results, criteria }: {
         </aside>
       </div>
       <Dialog open={Boolean(calculation)} onOpenChange={(open) => !open && setCalculation(null)}>
-        <DialogContent className="max-w-4xl" title={`Alasan ranking ${method}: ${calculation?.alternative.name ?? ""}`} description="Ringkasan ini menjelaskan mengapa lokasi mendapat skor tersebut, tanpa rumus teknis yang sulit dibaca.">
+        <DialogContent className="max-w-5xl" title={`Perhitungan manual ${method}: ${calculation?.alternative.name ?? ""}`} description="Lihat asal bobot, nilai minimum dan maksimum, rumus normalisasi, serta cara skor akhir diperoleh.">
           {calculation ? <CalculationDetail method={method} result={calculation} results={results} criteria={criteria} /> : null}
         </DialogContent>
       </Dialog>
@@ -314,7 +314,8 @@ function CalculationDetail({ method, result, results, criteria }: {
   criteria: Criteria[];
 }) {
   const totalWeight = criteria.reduce((sum, item) => sum + Math.max(0, item.weight), 0) || 1;
-  const formatPercent = (value: number) => `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 0 }).format(value * 100)}%`;
+  const formatPercent = (value: number) => `${new Intl.NumberFormat("id-ID", { maximumFractionDigits: 2 }).format(value * 100)}%`;
+  const formatDecimal = (value: number) => new Intl.NumberFormat("id-ID", { maximumFractionDigits: 3 }).format(value);
   const details = criteria.map((criterion) => {
     const raw = Number(result.alternative.values[criterion.id] ?? 0);
     const utility = result.utilities[criterion.id] ?? 0;
@@ -323,12 +324,39 @@ function CalculationDetail({ method, result, results, criteria }: {
     const values = results.map((item) => Number(item.alternative.values[criterion.id] ?? 0));
     const min = Math.min(...values);
     const max = Math.max(...values);
-    return { criterion, raw, utility, weight, contribution, min, max };
+    const positiveValues = values.filter((value) => value > 0);
+    const positiveMin = positiveValues.length ? Math.min(...positiveValues) : 0;
+    let formula = "";
+    let substitution = "";
+
+    if (method === "SMART") {
+      if (max === min) {
+        formula = "Nilai semua alternatif sama, maka nilai setara = 1";
+        substitution = "1";
+      } else if (criterion.kind === "benefit") {
+        formula = "(nilai lokasi - nilai minimum) / (nilai maksimum - nilai minimum)";
+        substitution = `(${formatDecimal(raw)} - ${formatDecimal(min)}) / (${formatDecimal(max)} - ${formatDecimal(min)}) = ${formatScore(utility)}`;
+      } else {
+        formula = "(nilai maksimum - nilai lokasi) / (nilai maksimum - nilai minimum)";
+        substitution = `(${formatDecimal(max)} - ${formatDecimal(raw)}) / (${formatDecimal(max)} - ${formatDecimal(min)}) = ${formatScore(utility)}`;
+      }
+    } else if (criterion.kind === "benefit") {
+      formula = "nilai lokasi / nilai maksimum";
+      substitution = max === 0 ? "Nilai maksimum 0, maka nilai setara = 1" : `${formatDecimal(raw)} / ${formatDecimal(max)} = ${formatScore(utility)}`;
+    } else {
+      formula = "nilai minimum / nilai lokasi";
+      substitution = raw === 0
+        ? `Nilai lokasi 0, maka nilai setara = ${formatScore(utility)}`
+        : `${formatDecimal(positiveMin)} / ${formatDecimal(raw)} = ${formatScore(utility)}`;
+    }
+
+    return { criterion, raw, utility, weight, contribution, min, max, positiveMin, formula, substitution };
   });
   const topFactors = [...details].sort((a, b) => b.contribution - a.contribution).slice(0, 2);
   const methodDescription = method === "SMART"
     ? "SMART membaca tiap kriteria sebagai nilai setara, lalu mengalikan nilai tersebut dengan bobot kriteria."
     : "SAW membandingkan nilai setiap lokasi dengan nilai terbaik pada tiap kriteria, lalu mengalikannya dengan bobot.";
+  const contributionSum = details.reduce((sum, item) => sum + item.contribution, 0);
 
   return (
     <div className="space-y-5">
@@ -351,23 +379,24 @@ function CalculationDetail({ method, result, results, criteria }: {
       </section>
 
       <section className="rounded-2xl border border-orange-100 bg-[#fffdf8] p-5">
-        <h3 className="text-sm font-extrabold text-ocean">Ringkasan sederhana</h3>
+        <h3 className="text-sm font-extrabold text-ocean">Cara membaca hitungan</h3>
         <p className="mt-2 text-xs leading-6 text-ink/65">{methodDescription}</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <div className="rounded-xl bg-white p-4">
-            <div className="text-[10px] font-bold uppercase text-ink/45">Langkah 1</div>
-            <div className="mt-2 text-sm font-bold text-ocean">Nilai lokasi dibaca</div>
-            <p className="mt-1 text-xs leading-5 text-ink/55">Contoh: jumlah penduduk, luas daerah, jarak, sewa, dan persaingan.</p>
+        <div className="mt-4 grid gap-3 lg:grid-cols-4">
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+            <div className="text-[10px] font-black uppercase text-blue-700">1. Data asli</div>
+            <p className="mt-2 text-xs leading-5 text-blue-950/75">Nilai lokasi diambil dari data alternatif, misalnya penduduk, jarak, sewa, dan persaingan.</p>
           </div>
-          <div className="rounded-xl bg-white p-4">
-            <div className="text-[10px] font-bold uppercase text-ink/45">Langkah 2</div>
-            <div className="mt-2 text-sm font-bold text-ocean">Nilai disetarakan</div>
-            <p className="mt-1 text-xs leading-5 text-ink/55">Semua kriteria dibuat setara dalam skala 0 sampai 100%.</p>
+          <div className="rounded-xl border border-amber-100 bg-amber-50 p-4">
+            <div className="text-[10px] font-black uppercase text-amber-700">2. Min / max</div>
+            <p className="mt-2 text-xs leading-5 text-amber-950/75">Nilai minimum dan maksimum diambil dari seluruh alternatif pada kriteria yang sama.</p>
           </div>
-          <div className="rounded-xl bg-white p-4">
-            <div className="text-[10px] font-bold uppercase text-ink/45">Langkah 3</div>
-            <div className="mt-2 text-sm font-bold text-ocean">Dikalikan bobot</div>
-            <p className="mt-1 text-xs leading-5 text-ink/55">Kriteria dengan bobot lebih besar memberi pengaruh lebih besar.</p>
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
+            <div className="text-[10px] font-black uppercase text-emerald-700">3. Bobot</div>
+            <p className="mt-2 text-xs leading-5 text-emerald-950/75">Bobot desimal didapat dari bobot kriteria dibagi total bobot. Contoh 20 / 100 = 0,2.</p>
+          </div>
+          <div className="rounded-xl border border-orange-100 bg-orange-50 p-4">
+            <div className="text-[10px] font-black uppercase text-coral">4. Skor</div>
+            <p className="mt-2 text-xs leading-5 text-orange-950/75">Nilai setara dikalikan bobot. Semua hasilnya dijumlahkan menjadi skor akhir.</p>
           </div>
         </div>
       </section>
@@ -380,44 +409,82 @@ function CalculationDetail({ method, result, results, criteria }: {
           </div>
           <div className="text-xs font-bold text-coral">Skor akhir: {formatScore(result.score)}</div>
         </div>
-        <div className="mt-4 overflow-hidden rounded-2xl border border-orange-100">
-          <div className="hidden grid-cols-[1.1fr_.9fr_.8fr_.8fr_.8fr] gap-3 bg-mist px-4 py-3 text-[10px] font-black uppercase tracking-[.12em] text-ink/45 md:grid">
-            <div>Kriteria</div>
-            <div>Nilai asli</div>
-            <div>Nilai setara</div>
-            <div>Bobot</div>
-            <div>Sumbangan</div>
-          </div>
-          <div className="divide-y divide-orange-100">
-            {details.map(({ criterion, raw, utility, weight, contribution, min, max }) => (
-              <div key={criterion.id} className="grid gap-3 px-4 py-4 text-xs md:grid-cols-[1.1fr_.9fr_.8fr_.8fr_.8fr] md:items-center">
+        <div className="mt-4 space-y-4">
+          {details.map(({ criterion, raw, utility, weight, contribution, min, max, positiveMin, formula, substitution }) => (
+            <article key={criterion.id} className="overflow-hidden rounded-2xl border border-orange-100 bg-[#fffdf8]">
+              <div className="flex flex-col gap-3 border-b border-orange-100 bg-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <div className="font-extrabold text-ocean">{criterion.name}</div>
-                  <div className="mt-1 text-[11px] text-ink/50">
-                    {criterion.kind === "benefit" ? "Semakin besar semakin baik" : "Semakin kecil semakin baik"}
+                  <h4 className="text-sm font-extrabold text-ocean">{criterion.name}</h4>
+                  <p className="mt-1 text-[11px] leading-5 text-ink/55">
+                    {criterion.kind === "benefit" ? "Benefit: semakin besar nilainya semakin baik." : "Cost: semakin kecil nilainya semakin baik."}
+                  </p>
+                </div>
+                <Badge variant={criterion.kind === "benefit" ? "land" : "coral"}>
+                  {criterion.kind === "benefit" ? "Benefit" : "Cost"}
+                </Badge>
+              </div>
+
+              <div className="grid gap-3 p-4 lg:grid-cols-4">
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-[.1em] text-blue-700">Data asli</div>
+                  <div className="mt-2 font-data text-lg font-black text-blue-950">{formatNumber(raw)}</div>
+                  <div className="mt-1 text-[11px] text-blue-950/65">{criterion.unit || "nilai"} lokasi ini</div>
+                </div>
+                <div className="rounded-xl border border-amber-100 bg-amber-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-[.1em] text-amber-700">Min / max</div>
+                  <div className="mt-2 font-data text-sm font-black text-amber-950">Min {formatNumber(min)} · Max {formatNumber(max)}</div>
+                  <div className="mt-1 text-[11px] leading-5 text-amber-950/65">
+                    Diambil dari {results.length} alternatif.
+                    {method === "SAW" && criterion.kind === "cost" ? ` Min cost yang dipakai: ${formatNumber(positiveMin)}.` : ""}
                   </div>
                 </div>
-                <div>
-                  <div className="md:hidden text-[10px] font-bold uppercase text-ink/40">Nilai asli</div>
-                  <div className="font-data font-bold text-ocean">{formatNumber(raw)} <span className="font-sans text-ink/45">{criterion.unit}</span></div>
-                  <div className="mt-1 text-[10px] text-ink/40">Rentang {formatNumber(min)} - {formatNumber(max)}</div>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-[.1em] text-emerald-700">Bobot</div>
+                  <div className="mt-2 font-data text-lg font-black text-emerald-950">{formatScore(weight)}</div>
+                  <div className="mt-1 text-[11px] leading-5 text-emerald-950/65">
+                    Dari {criterion.weight} / {formatDecimal(totalWeight)} = {formatScore(weight)}
+                  </div>
                 </div>
-                <div>
-                  <div className="md:hidden text-[10px] font-bold uppercase text-ink/40">Nilai setara</div>
-                  <div className="font-data font-bold text-sea">{formatPercent(utility)}</div>
-                </div>
-                <div>
-                  <div className="md:hidden text-[10px] font-bold uppercase text-ink/40">Bobot</div>
-                  <div className="font-data font-bold text-ocean">{formatPercent(weight)}</div>
-                </div>
-                <div>
-                  <div className="md:hidden text-[10px] font-bold uppercase text-ink/40">Sumbangan</div>
-                  <div className="font-data text-sm font-black text-coral">{formatScore(contribution)}</div>
+                <div className="rounded-xl border border-orange-100 bg-orange-50 p-3">
+                  <div className="text-[10px] font-black uppercase tracking-[.1em] text-coral">Sumbangan skor</div>
+                  <div className="mt-2 font-data text-lg font-black text-coral">{formatScore(contribution)}</div>
+                  <div className="mt-1 text-[11px] leading-5 text-orange-950/65">
+                    {formatScore(utility)} × {formatScore(weight)}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div className="grid gap-3 border-t border-orange-100 p-4 lg:grid-cols-[1.2fr_.8fr]">
+                <div className="rounded-xl bg-white p-4">
+                  <div className="text-[10px] font-black uppercase tracking-[.12em] text-ink/45">Rumus normalisasi</div>
+                  <div className="mt-2 text-xs font-bold leading-6 text-ocean">{formula}</div>
+                  <div className="mt-2 rounded-lg bg-mist px-3 py-2 font-data text-xs font-bold leading-6 text-ink">
+                    {substitution}
+                  </div>
+                </div>
+                <div className="rounded-xl bg-ocean p-4 text-white">
+                  <div className="text-[10px] font-black uppercase tracking-[.12em] text-white/50">Hasil kriteria</div>
+                  <div className="mt-2 text-xs leading-6 text-white/75">
+                    Nilai setara <span className="font-data font-black text-land">{formatScore(utility)}</span> dikali bobot{" "}
+                    <span className="font-data font-black text-land">{formatScore(weight)}</span> menghasilkan{" "}
+                    <span className="font-data font-black text-land">{formatScore(contribution)}</span>.
+                  </div>
+                </div>
+              </div>
+            </article>
+          ))}
         </div>
+      </section>
+
+      <section className="rounded-2xl border border-orange-100 bg-white p-5">
+        <h3 className="text-sm font-extrabold text-ocean">Penjumlahan skor akhir</h3>
+        <div className="mt-3 rounded-xl bg-mist p-4 font-data text-xs font-bold leading-6 text-ink">
+          {details.map((item) => formatScore(item.contribution)).join(" + ")} = {formatScore(contributionSum)}
+        </div>
+        <p className="mt-3 text-xs leading-6 text-ink/60">
+          Jadi skor akhir metode {method} untuk {result.alternative.name} adalah{" "}
+          <span className="font-data font-black text-coral">{formatScore(result.score)}</span>.
+        </p>
       </section>
 
       <section className="rounded-2xl bg-mist p-5">
