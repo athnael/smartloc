@@ -177,47 +177,14 @@ export function RankingView({ method, setMethod, results, criteria }: {
   const [calculation, setCalculation] = useState<RankingResult | null>(null);
   const filtered = results.filter((item) => item.alternative.name.toLowerCase().includes(query.toLowerCase()));
   const totalWeight = criteria.reduce((sum, item) => sum + item.weight, 0);
-  const normalizedWeightTotal = criteria.reduce((sum, item) => sum + Math.max(0, item.weight), 0) || 1;
-  const getMainFactors = (item: RankingResult) => criteria
-    .map((criterion) => {
-      const weight = Math.max(0, criterion.weight) / normalizedWeightTotal;
-      const utility = item.utilities[criterion.id] ?? 0;
-      return {
-        criterion,
-        contribution: utility * weight
-      };
-    })
-    .sort((a, b) => b.contribution - a.contribution)
-    .slice(0, 3);
 
   return (
     <>
       <PageIntro
-        eyebrow="Rekomendasi Lokasi"
+        eyebrow="Analisis Multi-Kriteria"
         title="Ranking Lokasi Usaha"
-        description="Bandingkan lokasi dari skor tertinggi ke terendah. Admin dan user melihat tampilan yang sama agar hasil mudah dipahami."
+        description={`Urutan dihitung dengan metode ${method}. Skor diperbarui otomatis saat data kriteria atau alternatif berubah.`}
       />
-      <div className="mb-5 rounded-2xl border border-ocean/10 bg-white p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h3 className="text-sm font-extrabold text-ocean">Pilih cara perhitungan</h3>
-            <p className="mt-1 text-xs leading-5 text-ink/55">
-              SMART adalah metode utama. SAW tersedia sebagai pembanding agar hasil ranking lebih mudah dicek.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2 rounded-xl bg-mist p-1 sm:w-[320px]">
-            {(["SMART", "SAW"] as RankingMethod[]).map((item) => (
-              <button
-                key={item}
-                onClick={() => setMethod(item)}
-                className={`rounded-lg px-4 py-3 text-xs font-extrabold transition ${method === item ? "bg-coral text-white shadow-sm" : "text-ink/60 hover:bg-white hover:text-coral"}`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
       {totalWeight !== 100 ? (
         <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
           Total bobot saat ini {totalWeight}%. Sistem menormalisasi bobot secara otomatis agar perhitungan tetap valid.
@@ -238,7 +205,7 @@ export function RankingView({ method, setMethod, results, criteria }: {
           <div className="grid gap-3 p-4">
             {filtered.map((item) => (
               <article key={item.alternative.id} className="rounded-2xl border border-orange-100 bg-[#fffdf8] p-4 shadow-sm transition hover:border-orange-300">
-                <div className="grid gap-4 xl:grid-cols-[minmax(260px,1fr)_minmax(0,1.2fr)_180px] xl:items-center">
+                <div className="grid gap-4 xl:grid-cols-[minmax(220px,.95fr)_minmax(0,1.65fr)_150px] xl:items-center">
                   <div className="flex min-w-0 items-center gap-3">
                     <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl font-data text-sm font-bold ${item.rank === 1 ? "bg-coral text-white" : "bg-mist text-ocean"}`}>{item.rank}</span>
                     <img src={item.alternative.photoUrl} alt="" className="h-14 w-16 shrink-0 rounded-xl object-cover" />
@@ -247,29 +214,21 @@ export function RankingView({ method, setMethod, results, criteria }: {
                       <div className="mt-1 truncate text-[11px] font-medium text-ink/55">{item.alternative.address}</div>
                     </div>
                   </div>
-                  <div className="min-w-0 rounded-2xl bg-mist/70 p-3">
-                    <div className="text-[10px] font-bold uppercase tracking-[.12em] text-ink/45">Faktor paling membantu skor</div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {getMainFactors(item).map(({ criterion, contribution }) => (
-                        <div key={criterion.id} className="rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-ocean">
-                          {criterion.name} <span className="font-data text-coral">+{formatScore(contribution)}</span>
-                        </div>
-                      ))}
-                      {!criteria.length ? (
-                        <div className="text-xs text-ink/45">Belum ada kriteria.</div>
-                      ) : null}
-                    </div>
-                    <p className="mt-2 text-[11px] leading-5 text-ink/55">
-                      Klik tombol perhitungan untuk melihat langkah nilai asli, nilai setara, bobot, dan hasil akhirnya.
-                    </p>
+                  <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+                    {criteria.map((criterion) => (
+                      <div key={criterion.id} className="min-w-0 rounded-xl bg-mist/70 px-3 py-2">
+                        <div className="truncate text-[10px] font-bold text-ink/60">{criterion.name}</div>
+                        <div className="mt-1 font-data text-xs font-extrabold text-ocean">{formatNumber(item.alternative.values[criterion.id] ?? 0)} <span className="font-medium text-ink/50">{criterion.unit}</span></div>
+                      </div>
+                    ))}
                   </div>
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-100 bg-white px-3 py-3 xl:flex-col xl:items-end">
                     <div>
                       <div className="text-[10px] font-bold uppercase text-ink/55">Skor {method}</div>
-                      <div className="font-data text-2xl font-extrabold text-sea">{formatScore(item.score)}</div>
+                      <div className="font-data text-xl font-extrabold text-sea">{formatScore(item.score)}</div>
                     </div>
                     <Button size="sm" variant="outline" onClick={() => setCalculation(item)}>
-                      <Calculator className="h-3.5 w-3.5" /> Lihat Perhitungan
+                      <Calculator className="h-3.5 w-3.5" /> Perhitungan
                     </Button>
                   </div>
                 </div>
