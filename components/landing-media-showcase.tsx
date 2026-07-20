@@ -24,7 +24,7 @@ export function LandingMediaShowcase() {
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/25 blur-3xl" />
           <div className="relative">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/55 px-3 py-2 text-[10px] font-black uppercase tracking-[.2em] text-ocean">
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/55 px-3 py-2 text-xs font-black uppercase tracking-[.16em] text-ocean">
                 <ImagePlus className="h-4 w-4 text-coral" /> Dokumentasi lokasi
               </div>
               <h2 className="mt-4 max-w-4xl font-serif text-3xl font-bold leading-tight text-ocean sm:text-4xl">
@@ -137,12 +137,12 @@ function VideoSlot({ videos, slot }: { videos: LandingMedia[]; slot: number }) {
 function MediaCaption({ item, icon }: { item: LandingMedia; icon: "image" | "video" }) {
   return (
     <div className="p-4">
-      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-coral">
+      <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[.14em] text-coral">
         {icon === "video" ? <Video className="h-3.5 w-3.5" /> : <PlayCircle className="h-3.5 w-3.5" />}
         {item.locationName}
       </div>
       <h4 className="mt-1 truncate text-sm font-extrabold text-ocean">{item.title}</h4>
-      <p className="mt-2 line-clamp-2 text-[11px] leading-5 text-ink/55">{item.caption}</p>
+      <p className="mt-2 line-clamp-2 text-sm font-medium leading-6 text-ink/70">{item.caption}</p>
     </div>
   );
 }

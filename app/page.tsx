@@ -27,7 +27,7 @@ export default function HomePage() {
         <div className="absolute -right-52 -top-60 h-[520px] w-[520px] rounded-full bg-land/45 blur-3xl" />
         <div className="relative grid items-center gap-14 lg:grid-cols-[.9fr_1.1fr]">
           <div>
-            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-sea/15 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[.17em] text-sea shadow-sm">
+            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-sea/15 bg-white px-3 py-2 text-xs font-bold uppercase tracking-[.14em] text-sea shadow-sm">
               <Compass className="h-3.5 w-3.5" /> Sistem keputusan lokasi usaha
             </div>
             <h1 className="max-w-2xl font-serif text-5xl font-bold leading-[.98] tracking-[-.045em] text-ocean sm:text-6xl lg:text-[78px]">
@@ -42,7 +42,7 @@ export default function HomePage() {
               </Link>
               <Link href="/login" className={cn(buttonVariants({ size: "lg", variant: "outline" }))}>Lihat demo</Link>
             </div>
-            <div className="mt-9 flex flex-wrap gap-x-7 gap-y-3 text-[11px] font-bold text-ink/50">
+            <div className="mt-9 flex flex-wrap gap-x-7 gap-y-3 text-sm font-bold text-ink/65">
               <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-land" /> Data transparan</span>
               <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-land" /> SMART & SAW</span>
               <span className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-land" /> Peta interaktif</span>
@@ -58,7 +58,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl min-w-0">
           <div className="grid min-w-0 gap-8 lg:grid-cols-[.65fr_1.35fr] lg:gap-12">
             <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-[.18em] text-coral sm:tracking-[.24em]">Dari data ke keputusan</div>
+              <div className="text-xs font-bold uppercase tracking-[.16em] text-coral sm:tracking-[.22em]">Dari data ke keputusan</div>
               <h2 className="mt-4 max-w-full break-words font-serif text-[30px] font-bold leading-[1.12] tracking-[-.03em] text-ocean sm:text-4xl lg:text-5xl">
                 Lima Pertimbangan Untuk Memilih Lokasi Terbaik.
               </h2>
@@ -72,7 +72,7 @@ export default function HomePage() {
                 <article key={item.title} className="min-w-0 bg-white/45 p-6 backdrop-blur-sm sm:p-7">
                   <item.icon className="h-6 w-6 text-ocean" />
                   <h3 className="mt-10 font-serif text-xl font-bold text-ocean sm:mt-14">{item.title}</h3>
-                  <p className="mt-3 text-sm font-medium leading-6 text-ink/70 sm:text-xs">{item.text}</p>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-ink/75">{item.text}</p>
                 </article>
               ))}
             </div>
@@ -98,7 +98,7 @@ export default function HomePage() {
       <footer id="tentang" className="border-t border-ocean/10 px-6 py-10 lg:px-10">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-6 sm:flex-row sm:items-center">
           <Logo />
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-ink/45">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink/65">
             <ShieldCheck className="h-4 w-4 text-land" /> Prototipe keputusan lokasi Kota Manado
           </div>
         </div>

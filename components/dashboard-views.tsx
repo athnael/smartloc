@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState } from "react";
 import {
@@ -17,7 +17,7 @@ import { uploadMediaFile } from "@/lib/client-media-upload";
 import { calculateRanking } from "@/lib/ranking";
 import { useSmartlocStore } from "@/lib/store";
 import type { Alternative, Criteria, ExpertDataset, LandingMedia, RankingMethod, RankingResult, User } from "@/lib/types";
-import { formatNumber, formatScore } from "@/lib/utils";
+import { formatCriteriaValue, formatNumber, formatScore } from "@/lib/utils";
 
 type ViewId = "overview" | "ranking" | "map" | "criteria" | "alternatives" | "users" | "reports" | "expert" | "landing";
 
@@ -30,9 +30,9 @@ function PageIntro({ eyebrow, title, description, action }: {
   return (
     <div className="mb-7 flex flex-col justify-between gap-5 xl:flex-row xl:items-end">
       <div>
-        <div className="text-[9px] font-black uppercase tracking-[.22em] text-coral">{eyebrow}</div>
-        <h2 className="mt-2 font-serif text-3xl font-bold tracking-tight text-ocean">{title}</h2>
-        <p className="mt-2 max-w-2xl text-xs leading-6 text-ink/50">{description}</p>
+        <div className="text-xs font-black uppercase tracking-[.18em] text-coral">{eyebrow}</div>
+        <h2 className="mt-2 font-serif text-3xl font-bold tracking-tight text-ocean sm:text-4xl">{title}</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/70">{description}</p>
       </div>
       {action}
     </div>
@@ -55,9 +55,9 @@ function StatCard({ label, value, detail, icon: Icon, accent = "sea" }: {
     <div className="rounded-2xl border border-ocean/10 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
-          <div className="text-[9px] font-bold uppercase tracking-[.17em] text-ink/40">{label}</div>
+          <div className="text-xs font-bold uppercase tracking-[.14em] text-ink/60">{label}</div>
           <div className="mt-3 font-data text-3xl font-bold tracking-tight text-ocean">{value}</div>
-          <div className="mt-2 text-[10px] text-ink/45">{detail}</div>
+          <div className="mt-2 text-sm text-ink/65">{detail}</div>
         </div>
         <div className={`grid h-10 w-10 place-items-center rounded-xl ${colors[accent]}`}><Icon className="h-5 w-5" /></div>
       </div>
@@ -99,7 +99,7 @@ export function OverviewView({ user, results, onNavigate }: {
                   <div className={`grid h-9 w-9 place-items-center rounded-xl font-data text-xs font-bold ${item.rank === 1 ? "bg-coral text-white" : "bg-white text-ocean"}`}>{item.rank}</div>
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-xs font-bold text-ocean">{item.alternative.name}</div>
-                    <div className="mt-1 truncate text-[9px] text-ink/40">{item.alternative.address}</div>
+                    <div className="mt-1 truncate text-xs text-ink/60">{item.alternative.address}</div>
                   </div>
                   <div className="font-data text-xs font-bold text-sea">{formatScore(item.score)}</div>
                 </div>
@@ -112,8 +112,8 @@ export function OverviewView({ user, results, onNavigate }: {
               <h3 className="mt-16 font-serif text-3xl font-bold">{top?.alternative.name ?? "Belum ada data"}</h3>
               <p className="mt-2 text-xs leading-5 text-ink/60">{top?.alternative.address}</p>
               <div className="mt-6 flex items-end justify-between border-t border-ink/15 pt-4">
-                <span className="text-[9px] uppercase tracking-widest text-ink/50">Skor akhir</span>
-                <span className="font-data text-2xl font-extrabold text-ink">{top ? formatScore(top.score) : "—"}</span>
+                <span className="text-xs uppercase tracking-widest text-ink/60">Skor akhir</span>
+                <span className="font-data text-2xl font-extrabold text-ink">{top ? formatScore(top.score) : "â€”"}</span>
               </div>
             </div>
           </section>
@@ -129,14 +129,14 @@ export function OverviewView({ user, results, onNavigate }: {
         <section className="topography relative min-h-[360px] overflow-hidden rounded-[2rem] p-7 text-ink sm:p-9">
           <div className="relative z-10 flex h-full max-w-xl flex-col justify-between">
             <div>
-              <div className="text-[9px] font-extrabold uppercase tracking-[.22em] text-ink/65">Rekomendasi hari ini</div>
+              <div className="text-xs font-extrabold uppercase tracking-[.18em] text-ink/70">Rekomendasi hari ini</div>
               <h3 className="mt-5 font-serif text-4xl font-bold leading-tight">{top?.alternative.name ?? "Data belum tersedia"}</h3>
-              <p className="mt-4 text-xs leading-6 text-ink/65">{top?.alternative.address}</p>
+              <p className="mt-4 text-sm leading-7 text-ink/70">{top?.alternative.address}</p>
             </div>
             <div className="mt-16 flex flex-wrap items-end justify-between gap-5">
               <div>
-                <div className="text-[9px] uppercase tracking-widest text-ink/50">Skor SMART</div>
-                <div className="mt-1 font-data text-4xl font-extrabold text-ink">{top ? formatScore(top.score) : "—"}</div>
+                <div className="text-xs uppercase tracking-widest text-ink/60">Skor SMART</div>
+                <div className="mt-1 font-data text-4xl font-extrabold text-ink">{top ? formatScore(top.score) : "â€”"}</div>
               </div>
               <Button variant="coral" onClick={() => onNavigate("ranking")}>Lihat analisis <ArrowRight className="h-4 w-4" /></Button>
             </div>
@@ -149,8 +149,10 @@ export function OverviewView({ user, results, onNavigate }: {
               <button key={item.alternative.id} onClick={() => onNavigate("map")} className="group flex w-full items-center gap-4 text-left">
                 <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl font-data text-sm font-bold ${item.rank === 1 ? "bg-coral text-white" : "bg-mist text-sea"}`}>{item.rank}</div>
                 <div className="min-w-0 flex-1 border-b border-ocean/8 py-3">
-                  <div className="truncate text-xs font-bold text-ocean group-hover:text-sea">{item.alternative.name}</div>
-                  <div className="mt-1 text-[9px] text-ink/40">{item.alternative.values.rent} jt/bln · {item.alternative.values.distance} km</div>
+                  <div className="truncate text-sm font-bold text-ocean group-hover:text-sea">{item.alternative.name}</div>
+                  <div className="mt-1 text-xs font-semibold text-ink/60">
+                    {formatCriteriaValue(Number(item.alternative.values.rent ?? 0), "Rp", "rent")}/bulan · {formatCriteriaValue(Number(item.alternative.values.distance ?? 0), "km", "distance")}
+                  </div>
                 </div>
                 <ArrowRight className="h-4 w-4 text-ink/20 group-hover:text-coral" />
               </button>
@@ -195,11 +197,11 @@ export function RankingView({ method, setMethod, results, criteria }: {
           <div className="flex flex-col justify-between gap-4 border-b border-ocean/10 p-5 sm:flex-row sm:items-center">
             <div>
               <h3 className="font-serif text-xl font-bold text-ocean">Hasil Perankingan</h3>
-              <p className="mt-1 text-[10px] text-ink/40">{results.length} alternatif · tertinggi ke terendah</p>
+              <p className="mt-1 text-sm text-ink/60">{results.length} alternatif · tertinggi ke terendah</p>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" />
-              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari lokasi…" className="w-full pl-9 sm:w-56" />
+              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari lokasiâ€¦" className="w-full pl-9 sm:w-56" />
             </div>
           </div>
           <div className="grid gap-3 p-4">
@@ -211,20 +213,22 @@ export function RankingView({ method, setMethod, results, criteria }: {
                     <img src={item.alternative.photoUrl} alt="" className="h-14 w-16 shrink-0 rounded-xl object-cover" />
                     <div className="min-w-0">
                       <div className="truncate text-sm font-extrabold text-ocean">{item.alternative.name}</div>
-                      <div className="mt-1 truncate text-[11px] font-medium text-ink/55">{item.alternative.address}</div>
+                      <div className="mt-1 truncate text-xs font-medium text-ink/65">{item.alternative.address}</div>
                     </div>
                   </div>
-                  <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+                  <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
                     {criteria.map((criterion) => (
-                      <div key={criterion.id} className="min-w-0 rounded-xl bg-mist/70 px-3 py-2">
-                        <div className="truncate text-[10px] font-bold text-ink/60">{criterion.name}</div>
-                        <div className="mt-1 font-data text-xs font-extrabold text-ocean">{formatNumber(item.alternative.values[criterion.id] ?? 0)} <span className="font-medium text-ink/50">{criterion.unit}</span></div>
+                      <div key={criterion.id} className="min-w-0 rounded-xl border border-orange-100 bg-mist/80 px-3 py-3">
+                        <div className="min-h-[30px] text-[11px] font-extrabold uppercase leading-4 tracking-wide text-ink/70">{criterion.name}</div>
+                        <div className="mt-2 break-words font-data text-sm font-extrabold leading-5 text-ocean">
+                          {formatCriteriaValue(Number(item.alternative.values[criterion.id] ?? 0), criterion.unit, criterion.id)}
+                        </div>
                       </div>
                     ))}
                   </div>
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-100 bg-white px-3 py-3 xl:flex-col xl:items-end">
                     <div>
-                      <div className="text-[10px] font-bold uppercase text-ink/55">Skor {method}</div>
+                      <div className="text-xs font-bold uppercase text-ink/65">Skor {method}</div>
                       <div className="font-data text-xl font-extrabold text-sea">{formatScore(item.score)}</div>
                     </div>
                     <Button size="sm" variant="outline" onClick={() => setCalculation(item)}>
@@ -240,16 +244,16 @@ export function RankingView({ method, setMethod, results, criteria }: {
         <aside className="space-y-5">
           <div className="topography rounded-2xl p-6 text-ink">
             <Award className="h-6 w-6 text-ink" />
-            <div className="mt-12 text-[9px] uppercase tracking-[.2em] text-ink/50">Pilihan teratas</div>
-            <h3 className="mt-2 font-serif text-2xl font-bold">{results[0]?.alternative.name ?? "—"}</h3>
-            <div className="mt-5 border-t border-ink/15 pt-4 font-data text-3xl font-extrabold text-ink">{results[0] ? formatScore(results[0].score) : "—"}</div>
+            <div className="mt-12 text-xs uppercase tracking-[.16em] text-ink/60">Pilihan teratas</div>
+            <h3 className="mt-2 font-serif text-2xl font-bold">{results[0]?.alternative.name ?? "â€”"}</h3>
+            <div className="mt-5 border-t border-ink/15 pt-4 font-data text-3xl font-extrabold text-ink">{results[0] ? formatScore(results[0].score) : "â€”"}</div>
           </div>
           <div className="rounded-2xl border border-ocean/10 bg-white p-5">
             <h3 className="text-xs font-bold text-ocean">Komposisi Bobot</h3>
             <div className="mt-4 space-y-4">
               {criteria.map((item) => (
                 <div key={item.id}>
-                  <div className="flex justify-between text-[10px]"><span className="text-ink/55">{item.name}</span><span className="font-data font-bold text-ocean">{item.weight}%</span></div>
+                  <div className="flex justify-between text-xs"><span className="text-ink/70">{item.name}</span><span className="font-data font-bold text-ocean">{item.weight}%</span></div>
                   <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-mist"><div className="h-full rounded-full bg-sea" style={{ width: `${Math.min(100, item.weight)}%` }} /></div>
                 </div>
               ))}
@@ -452,7 +456,7 @@ function CalculationDetail({ method, result, results, criteria }: {
               <tr>
                 <th className={tableHeadClass}>No</th>
                 <th className={tableHeadClass}>Alternatif</th>
-                {criteriaMeta.map(({ criterion, weight }) => <th key={criterion.id} className={tableHeadClass}>{criterion.name} × {formatScore(weight)}</th>)}
+                {criteriaMeta.map(({ criterion, weight }) => <th key={criterion.id} className={tableHeadClass}>{criterion.name} Ã— {formatScore(weight)}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -531,7 +535,7 @@ function CalculationDetailLegacy({ method, result, results, criteria }: {
     <div>
       <div className="rounded-xl bg-mist p-4 text-xs leading-6 text-ink/65">
         {method === "SMART"
-          ? "SMART mengubah nilai asli menjadi utility 0–1 berdasarkan nilai minimum dan maksimum, lalu mengalikannya dengan bobot ternormalisasi."
+          ? "SMART mengubah nilai asli menjadi utility 0â€“1 berdasarkan nilai minimum dan maksimum, lalu mengalikannya dengan bobot ternormalisasi."
           : "SAW membagi nilai benefit dengan nilai maksimum, sedangkan cost menggunakan nilai minimum dibagi nilai alternatif. Hasilnya dikalikan bobot ternormalisasi."}
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -543,8 +547,8 @@ function CalculationDetailLegacy({ method, result, results, criteria }: {
               const normalized = result.utilities[criterion.id] ?? 0;
               const weight = Math.max(0, criterion.weight) / totalWeight;
               const formula = method === "SMART"
-                ? max === min ? "Nilai sama → 1" : criterion.kind === "benefit" ? `(x − ${min}) ÷ (${max} − ${min})` : `(${max} − x) ÷ (${max} − ${min})`
-                : criterion.kind === "benefit" ? `x ÷ ${max}` : `${min} ÷ x`;
+                ? max === min ? "Nilai sama â†’ 1" : criterion.kind === "benefit" ? `(x âˆ’ ${min}) Ã· (${max} âˆ’ ${min})` : `(${max} âˆ’ x) Ã· (${max} âˆ’ ${min})`
+                : criterion.kind === "benefit" ? `x Ã· ${max}` : `${min} Ã· x`;
               return (
                 <article key={criterion.id} className="rounded-xl border border-orange-200 bg-white p-4">
                   <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-extrabold text-ocean">{criterion.name}</h3><Badge variant={criterion.kind === "benefit" ? "land" : "coral"}>{criterion.kind}</Badge></div>
@@ -654,10 +658,10 @@ export function CriteriaView() {
                 return (
                   <tr key={item.id}>
                     <td className="px-5 py-4"><div className="text-xs font-bold text-ocean">{item.name}</div><div className="mt-1 text-[9px] text-ink/40">{item.unit || "Tanpa satuan"}</div></td>
-                    <td className="px-5 py-4 text-xs text-ink/55">{item.attribute || "—"}</td>
+                    <td className="px-5 py-4 text-xs text-ink/55">{item.attribute || "â€”"}</td>
                     <td className="px-5 py-4"><Badge variant={item.kind === "benefit" ? "land" : "coral"}>{item.kind}</Badge></td>
                     <td className="px-5 py-4 font-data text-sm font-bold text-sea">{item.weight}%</td>
-                    <td className="px-5 py-4 font-data text-[10px] text-ink/50">{values.length ? `${formatNumber(Math.min(...values))} – ${formatNumber(Math.max(...values))}` : "—"}</td>
+                    <td className="px-5 py-4 font-data text-[10px] text-ink/50">{values.length ? `${formatNumber(Math.min(...values))} â€“ ${formatNumber(Math.max(...values))}` : "â€”"}</td>
                     <td className="px-5 py-4"><div className="flex justify-end gap-2"><Button size="icon" variant="ghost" onClick={() => { setEditing(item); setOpen(true); }} aria-label="Edit"><Edit3 className="h-4 w-4" /></Button><Button size="icon" variant="danger" onClick={() => remove(item)} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button></div></td>
                   </tr>
                 );
@@ -691,7 +695,7 @@ function CriteriaForm({ initial, onSave, onCancel }: {
     event.preventDefault();
     if (name.trim().length < 3) return setError("Nama kriteria minimal 3 karakter.");
     const parsedWeight = Number(weight);
-    if (weight === "" || !Number.isFinite(parsedWeight) || parsedWeight < 0 || parsedWeight > 100) return setError("Bobot harus berada di antara 0–100.");
+    if (weight === "" || !Number.isFinite(parsedWeight) || parsedWeight < 0 || parsedWeight > 100) return setError("Bobot harus berada di antara 0â€“100.");
     onSave({ name: name.trim(), weight: parsedWeight, kind, attribute: attribute.trim(), unit: unit.trim() });
   }
 
@@ -750,7 +754,7 @@ export function AlternativesView() {
         }
       />
       <div className="mb-5 flex max-w-xs items-center">
-        <div className="relative w-full"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari alternatif…" className="pl-9" /></div>
+        <div className="relative w-full"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari alternatifâ€¦" className="pl-9" /></div>
       </div>
       <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {filtered.map((item) => (
@@ -758,15 +762,20 @@ export function AlternativesView() {
             <div className="relative h-40">
               <img src={item.photoUrl} alt={item.name} className="h-full w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-ocean/65 to-transparent" />
-              <div className="absolute bottom-3 left-4 right-4 text-white"><h3 className="font-serif text-xl font-bold">{item.name}</h3><p className="mt-1 truncate text-[9px] text-white/65">{item.address}</p></div>
+              <div className="absolute bottom-3 left-4 right-4 text-white"><h3 className="font-serif text-xl font-bold">{item.name}</h3><p className="mt-1 truncate text-xs font-semibold text-white/80">{item.address}</p></div>
             </div>
             <div className="p-4">
               <div className="grid grid-cols-2 gap-2">
                 {criteria.map((criterion) => (
-                  <div key={criterion.id} className="rounded-xl bg-mist/65 p-3"><div className="truncate text-[10px] font-semibold uppercase tracking-wide text-ink/60">{criterion.name}</div><div className="mt-1 font-data text-sm font-bold text-ocean">{formatNumber(item.values[criterion.id] ?? 0)} <span className="text-[10px] font-medium text-ink/50">{criterion.unit}</span></div></div>
+                  <div key={criterion.id} className="rounded-xl border border-orange-100 bg-mist/70 p-3">
+                    <div className="min-h-[30px] text-[11px] font-extrabold uppercase leading-4 tracking-wide text-ink/70">{criterion.name}</div>
+                    <div className="mt-2 break-words font-data text-sm font-bold text-ocean">
+                      {formatCriteriaValue(Number(item.values[criterion.id] ?? 0), criterion.unit, criterion.id)}
+                    </div>
+                  </div>
                 ))}
               </div>
-              <div className="mt-4 flex items-center justify-between"><span className="font-data text-[9px] text-ink/40">{item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}</span><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={() => { setEditing(item); setOpen(true); }}><Edit3 className="h-4 w-4" /></Button><Button size="icon" variant="danger" onClick={() => remove(item)}><Trash2 className="h-4 w-4" /></Button></div></div>
+              <div className="mt-4 flex items-center justify-between"><span className="font-data text-xs font-semibold text-ink/55">{item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}</span><div className="flex gap-1"><Button size="icon" variant="ghost" onClick={() => { setEditing(item); setOpen(true); }}><Edit3 className="h-4 w-4" /></Button><Button size="icon" variant="danger" onClick={() => remove(item)}><Trash2 className="h-4 w-4" /></Button></div></div>
             </div>
           </article>
         ))}
@@ -953,7 +962,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
       </Field>
       <Field label="Pilih Foto/Video" hint="Foto dan video ditampilkan 4:3. Video maksimal 75 MB agar halaman tetap ringan." className="sm:col-span-2">
         <label className={`inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-coral px-5 text-sm font-semibold text-white hover:bg-[#e85d00] ${processing ? "pointer-events-none opacity-60" : ""}`}>
-          <Upload className="h-4 w-4" /> {processing ? "Memproses…" : "Pilih file"}
+          <Upload className="h-4 w-4" /> {processing ? "Memprosesâ€¦" : "Pilih file"}
           <input
             type="file"
             accept="image/*,video/*"
@@ -1099,13 +1108,13 @@ function AlternativeForm({ initial, criteria, onSave, onCancel }: {
               <div>
                 <div className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-land text-ink"><Upload className="h-5 w-5" /></div>
                 <p className="mt-3 text-xs font-bold text-ocean">Belum ada foto lokasi</p>
-                <p className="mt-1 text-[11px] text-ink/55">JPG, PNG, atau WebP · maksimal 8 MB</p>
+                <p className="mt-1 text-[11px] text-ink/55">JPG, PNG, atau WebP Â· maksimal 8 MB</p>
               </div>
             </div>
           )}
           <div className="border-t border-orange-200 bg-white p-4">
             <label className={`inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-coral px-5 text-sm font-semibold text-white hover:bg-[#e85d00] ${isProcessingPhoto ? "pointer-events-none opacity-60" : ""}`}>
-              <Upload className="h-4 w-4" /> {isProcessingPhoto ? "Memproses foto…" : photoUrl ? "Ganti foto" : "Pilih foto"}
+              <Upload className="h-4 w-4" /> {isProcessingPhoto ? "Memproses fotoâ€¦" : photoUrl ? "Ganti foto" : "Pilih foto"}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -1317,11 +1326,11 @@ export function ExpertView({ isAdmin }: { isAdmin: boolean }) {
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2 text-sm font-extrabold text-ocean"><BrainCircuit className="h-5 w-5 shrink-0 text-coral" /> <span className="min-w-0 break-words">{selected.expertName}</span></div>
-                <p className="mt-1 text-xs font-medium text-ink/60">{selected.expertise} · {selected.source}</p>
+                <p className="mt-1 text-xs font-medium text-ink/60">{selected.expertise} Â· {selected.source}</p>
                 <p className="mt-3 max-w-3xl text-xs leading-6 text-ink/65">{selected.notes}</p>
               </div>
               <div className="flex min-w-0 w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
-                {datasets.length > 1 ? <select value={selected.id} onChange={(event) => setSelectedId(event.target.value)} className="h-11 w-full min-w-0 max-w-full rounded-xl border-orange-200 bg-white px-3 text-xs font-semibold text-ocean sm:w-auto sm:max-w-[360px] lg:max-w-[420px]" aria-label="Pilih dataset expert">{datasets.map((item) => <option key={item.id} value={item.id}>{item.expertName} — {item.source}</option>)}</select> : null}
+                {datasets.length > 1 ? <select value={selected.id} onChange={(event) => setSelectedId(event.target.value)} className="h-11 w-full min-w-0 max-w-full rounded-xl border-orange-200 bg-white px-3 text-xs font-semibold text-ocean sm:w-auto sm:max-w-[360px] lg:max-w-[420px]" aria-label="Pilih dataset expert">{datasets.map((item) => <option key={item.id} value={item.id}>{item.expertName} â€” {item.source}</option>)}</select> : null}
                 {isAdmin ? <Button size="sm" variant="danger" onClick={() => { if (confirm("Hapus dataset expert ini?")) deleteDataset(selected.id); }}><Trash2 className="h-3.5 w-3.5" /> Hapus dataset</Button> : null}
               </div>
             </div>
@@ -1375,7 +1384,7 @@ function ExpertImport({ onImport }: {
       { id: "population", name: "Jumlah penduduk", weight: 25, kind: "benefit", unit: "jiwa", attribute: "Potensi pasar" },
       { id: "area", name: "Luas daerah", weight: 15, kind: "benefit", unit: "km2", attribute: "Cakupan wilayah" },
       { id: "distance", name: "Jarak ke pusat kota", weight: 20, kind: "cost", unit: "km", attribute: "Aksesibilitas" },
-      { id: "rent", name: "Harga sewa", weight: 25, kind: "cost", unit: "jt/bln", attribute: "Biaya operasional" },
+      { id: "rent", name: "Harga sewa", weight: 25, kind: "cost", unit: "Rp", attribute: "Biaya operasional" },
       { id: "competition", name: "Persaingan", weight: 15, kind: "cost", unit: "usaha", attribute: "Kompetitor sejenis" }
     ];
     const sampleAlternatives: Alternative[] = [
@@ -1500,7 +1509,7 @@ export function ReportsView({ method, results, criteria }: {
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <StatCard label="Alternatif" value={results.length} detail="Lokasi dalam laporan" icon={Building2} />
-        <StatCard label="Skor Tertinggi" value={results[0] ? formatScore(results[0].score) : "—"} detail={results[0]?.alternative.name ?? "Belum ada"} icon={Award} accent="coral" />
+        <StatCard label="Skor Tertinggi" value={results[0] ? formatScore(results[0].score) : "â€”"} detail={results[0]?.alternative.name ?? "Belum ada"} icon={Award} accent="coral" />
         <StatCard label="Bobot Total" value={`${criteria.reduce((sum, item) => sum + item.weight, 0)}%`} detail={`${criteria.length} kriteria aktif`} icon={ShieldCheck} accent="land" />
       </div>
       <section className="print-card overflow-hidden rounded-2xl border border-ocean/10 bg-white shadow-sm">

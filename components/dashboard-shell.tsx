@@ -93,12 +93,12 @@ export function DashboardShell() {
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-coral font-serif text-lg font-bold">{user.name.charAt(0)}</div>
             <div className="min-w-0">
               <div className="truncate text-xs font-bold">{user.name}</div>
-              <div className="mt-1 text-[10px] font-semibold uppercase tracking-[.14em] text-white/75">{user.role === "admin" ? "Administrator" : "Pelaku usaha"}</div>
+              <div className="mt-1 text-xs font-semibold uppercase tracking-[.12em] text-white/85">{user.role === "admin" ? "Administrator" : "Pelaku usaha"}</div>
             </div>
           </div>
         </div>
         <nav className="mt-7 flex-1 space-y-1">
-          <div className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.16em] text-white/65">Navigasi</div>
+          <div className="mb-3 px-3 text-xs font-bold uppercase tracking-[.14em] text-white/75">Navigasi</div>
           {nav.map((item) => (
             <button
               key={item.id}
@@ -129,7 +129,7 @@ export function DashboardShell() {
           <div className="flex items-center gap-3">
             <Button variant="outline" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-4 w-4" /></Button>
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-[.16em] text-sea">SMARTLOC / {user.role}</div>
+              <div className="text-xs font-bold uppercase tracking-[.14em] text-sea">SMARTLOC / {user.role}</div>
               <h1 className="mt-1 font-serif text-xl font-bold text-ocean">{activeLabel}</h1>
             </div>
           </div>
@@ -137,7 +137,7 @@ export function DashboardShell() {
             {(view === "ranking" || view === "map" || view === "reports") ? (
               <div className="flex rounded-xl border border-ocean/10 bg-white p-1">
                 {(["SMART", "SAW"] as RankingMethod[]).map((item) => (
-                  <button key={item} onClick={() => setMethod(item)} className={cn("rounded-lg px-3 py-2 font-data text-[10px] font-bold", method === item ? "bg-coral text-white" : "text-ink/45 hover:text-coral")}>{item}</button>
+                  <button key={item} onClick={() => setMethod(item)} className={cn("rounded-lg px-3 py-2 font-data text-xs font-bold", method === item ? "bg-coral text-white" : "text-ink/65 hover:text-coral")}>{item}</button>
                 ))}
               </div>
             ) : null}

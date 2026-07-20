@@ -32,7 +32,7 @@ export const seedCriteria: Criteria[] = [
   { id: "population", name: "Jumlah penduduk", weight: 25, kind: "benefit", unit: "jiwa", attribute: "Potensi pasar" },
   { id: "area", name: "Luas daerah", weight: 15, kind: "benefit", unit: "km²", attribute: "Cakupan wilayah" },
   { id: "distance", name: "Jarak ke pusat kota", weight: 20, kind: "cost", unit: "km", attribute: "Aksesibilitas" },
-  { id: "rent", name: "Harga sewa", weight: 25, kind: "cost", unit: "jt/bln", attribute: "Biaya operasional" },
+  { id: "rent", name: "Harga sewa", weight: 25, kind: "cost", unit: "Rp", attribute: "Biaya operasional" },
   { id: "competition", name: "Persaingan", weight: 15, kind: "cost", unit: "usaha", attribute: "Kompetitor sejenis" }
 ];
 
