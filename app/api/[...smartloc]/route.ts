@@ -46,6 +46,12 @@ const registerSchema = z.object({
   password: z.string().min(6),
   role: roleSchema
 });
+const adminUserSchema = z.object({
+  name: z.string().min(3),
+  email: z.string().email(),
+  password: z.string().min(6),
+  role: roleSchema
+});
 const expertDatasetSchema = z.object({
   id: z.string().optional(),
   expertName: z.string().min(2),
@@ -211,6 +217,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return json({ ok: true, data: item, database }, 201);
   }
 
+  if (resource === "users") {
+    const parsed = await body(request, adminUserSchema);
+    if (!parsed.success) return error("Data pengguna tidak valid.");
+    const created = await updateDatabase((db) => {
+      if (db.users.some((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase())) {
+        throw new Error("EMAIL_EXISTS");
+      }
+      db.users.push({ ...parsed.data, id: createId("usr"), createdAt: new Date().toISOString() });
+    }).catch((err) => err instanceof Error && err.message === "EMAIL_EXISTS" ? null : Promise.reject(err));
+    if (!created) return error("Email sudah digunakan.", 409);
+    const user = created.users.find((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase());
+    return json({ ok: true, user: user ? publicUser(user) : null }, 201);
+  }
+
   if (resource === "alternatives") {
     const parsed = await body(request, alternativeSchema);
     if (!parsed.success) return error("Data alternatif tidak valid.");
@@ -286,6 +306,19 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     if (!parsed.success) return error("Data kriteria tidak valid.");
     await updateDatabase((db) => { db.criteria = db.criteria.map((item) => item.id === id ? { ...parsed.data, id } : item); });
     return json({ ok: true });
+  }
+  if (resource === "users") {
+    const parsed = await body(request, adminUserSchema);
+    if (!parsed.success) return error("Data pengguna tidak valid.");
+    const updated = await updateDatabase((db) => {
+      if (db.users.some((item) => item.id !== id && item.email.toLowerCase() === parsed.data.email.toLowerCase())) {
+        throw new Error("EMAIL_EXISTS");
+      }
+      db.users = db.users.map((item) => item.id === id ? { ...item, ...parsed.data, id, createdAt: item.createdAt } : item);
+    }).catch((err) => err instanceof Error && err.message === "EMAIL_EXISTS" ? null : Promise.reject(err));
+    if (!updated) return error("Email sudah digunakan.", 409);
+    const user = updated.users.find((item) => item.id === id);
+    return json({ ok: true, user: user ? publicUser(user) : null });
   }
   if (resource === "alternatives") {
     const parsed = await body(request, alternativeSchema);

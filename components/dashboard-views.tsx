@@ -16,7 +16,7 @@ import { LocationMap } from "./location-map";
 import { uploadMediaFile } from "@/lib/client-media-upload";
 import { calculateRanking } from "@/lib/ranking";
 import { useSmartlocStore } from "@/lib/store";
-import type { Alternative, Criteria, ExpertDataset, LandingMedia, RankingMethod, RankingResult, User } from "@/lib/types";
+import type { Alternative, Criteria, ExpertDataset, LandingMedia, RankingMethod, RankingResult, Role, User } from "@/lib/types";
 import { formatCriteriaValue, formatNumber, formatScore } from "@/lib/utils";
 
 type ViewId = "overview" | "ranking" | "map" | "criteria" | "alternatives" | "users" | "reports" | "expert" | "landing";
@@ -113,7 +113,7 @@ export function OverviewView({ user, results, onNavigate }: {
               <p className="mt-2 text-xs leading-5 text-ink/60">{top?.alternative.address}</p>
               <div className="mt-6 flex items-end justify-between border-t border-ink/15 pt-4">
                 <span className="text-xs uppercase tracking-widest text-ink/60">Skor akhir</span>
-                <span className="font-data text-2xl font-extrabold text-ink">{top ? formatScore(top.score) : "â€”"}</span>
+                <span className="font-data text-2xl font-extrabold text-ink">{top ? formatScore(top.score) : "-"}</span>
               </div>
             </div>
           </section>
@@ -136,7 +136,7 @@ export function OverviewView({ user, results, onNavigate }: {
             <div className="mt-16 flex flex-wrap items-end justify-between gap-5">
               <div>
                 <div className="text-xs uppercase tracking-widest text-ink/60">Skor SMART</div>
-                <div className="mt-1 font-data text-4xl font-extrabold text-ink">{top ? formatScore(top.score) : "â€”"}</div>
+                <div className="mt-1 font-data text-4xl font-extrabold text-ink">{top ? formatScore(top.score) : "-"}</div>
               </div>
               <Button variant="coral" onClick={() => onNavigate("ranking")}>Lihat analisis <ArrowRight className="h-4 w-4" /></Button>
             </div>
@@ -201,7 +201,7 @@ export function RankingView({ method, setMethod, results, criteria }: {
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" />
-              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari lokasiâ€¦" className="w-full pl-9 sm:w-56" />
+              <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari lokasi..." className="w-full pl-9 sm:w-56" />
             </div>
           </div>
           <div className="grid gap-3 p-4">
@@ -216,11 +216,11 @@ export function RankingView({ method, setMethod, results, criteria }: {
                       <div className="mt-1 truncate text-xs font-medium text-ink/65">{item.alternative.address}</div>
                     </div>
                   </div>
-                  <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+                  <div className="grid min-w-0 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
                     {criteria.map((criterion) => (
-                      <div key={criterion.id} className="min-w-0 rounded-xl border border-orange-100 bg-mist/80 px-3 py-3">
-                        <div className="min-h-[30px] text-[11px] font-extrabold uppercase leading-4 tracking-wide text-ink/70">{criterion.name}</div>
-                        <div className="mt-2 break-words font-data text-sm font-extrabold leading-5 text-ocean">
+                      <div key={criterion.id} className="min-w-0 rounded-xl bg-mist/70 px-3 py-2">
+                        <div className="truncate text-[10px] font-bold text-ink/60">{criterion.name}</div>
+                        <div className="mt-1 break-words font-data text-xs font-extrabold leading-5 text-ocean">
                           {formatCriteriaValue(Number(item.alternative.values[criterion.id] ?? 0), criterion.unit, criterion.id)}
                         </div>
                       </div>
@@ -245,8 +245,8 @@ export function RankingView({ method, setMethod, results, criteria }: {
           <div className="topography rounded-2xl p-6 text-ink">
             <Award className="h-6 w-6 text-ink" />
             <div className="mt-12 text-xs uppercase tracking-[.16em] text-ink/60">Pilihan teratas</div>
-            <h3 className="mt-2 font-serif text-2xl font-bold">{results[0]?.alternative.name ?? "â€”"}</h3>
-            <div className="mt-5 border-t border-ink/15 pt-4 font-data text-3xl font-extrabold text-ink">{results[0] ? formatScore(results[0].score) : "â€”"}</div>
+            <h3 className="mt-2 font-serif text-2xl font-bold">{results[0]?.alternative.name ?? "-"}</h3>
+            <div className="mt-5 border-t border-ink/15 pt-4 font-data text-3xl font-extrabold text-ink">{results[0] ? formatScore(results[0].score) : "-"}</div>
           </div>
           <div className="rounded-2xl border border-ocean/10 bg-white p-5">
             <h3 className="text-xs font-bold text-ocean">Komposisi Bobot</h3>
@@ -456,7 +456,7 @@ function CalculationDetail({ method, result, results, criteria }: {
               <tr>
                 <th className={tableHeadClass}>No</th>
                 <th className={tableHeadClass}>Alternatif</th>
-                {criteriaMeta.map(({ criterion, weight }) => <th key={criterion.id} className={tableHeadClass}>{criterion.name} Ã— {formatScore(weight)}</th>)}
+                {criteriaMeta.map(({ criterion, weight }) => <th key={criterion.id} className={tableHeadClass}>{criterion.name} x {formatScore(weight)}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -535,7 +535,7 @@ function CalculationDetailLegacy({ method, result, results, criteria }: {
     <div>
       <div className="rounded-xl bg-mist p-4 text-xs leading-6 text-ink/65">
         {method === "SMART"
-          ? "SMART mengubah nilai asli menjadi utility 0â€“1 berdasarkan nilai minimum dan maksimum, lalu mengalikannya dengan bobot ternormalisasi."
+          ? "SMART mengubah nilai asli menjadi utility 0-1 berdasarkan nilai minimum dan maksimum, lalu mengalikannya dengan bobot ternormalisasi."
           : "SAW membagi nilai benefit dengan nilai maksimum, sedangkan cost menggunakan nilai minimum dibagi nilai alternatif. Hasilnya dikalikan bobot ternormalisasi."}
       </div>
       <div className="mt-5 grid gap-3 md:grid-cols-2">
@@ -547,8 +547,8 @@ function CalculationDetailLegacy({ method, result, results, criteria }: {
               const normalized = result.utilities[criterion.id] ?? 0;
               const weight = Math.max(0, criterion.weight) / totalWeight;
               const formula = method === "SMART"
-                ? max === min ? "Nilai sama â†’ 1" : criterion.kind === "benefit" ? `(x âˆ’ ${min}) Ã· (${max} âˆ’ ${min})` : `(${max} âˆ’ x) Ã· (${max} âˆ’ ${min})`
-                : criterion.kind === "benefit" ? `x Ã· ${max}` : `${min} Ã· x`;
+                ? max === min ? "Nilai sama -> 1" : criterion.kind === "benefit" ? `(x - ${min}) / (${max} - ${min})` : `(${max} - x) / (${max} - ${min})`
+                : criterion.kind === "benefit" ? `x / ${max}` : `${min} / x`;
               return (
                 <article key={criterion.id} className="rounded-xl border border-orange-200 bg-white p-4">
                   <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-extrabold text-ocean">{criterion.name}</h3><Badge variant={criterion.kind === "benefit" ? "land" : "coral"}>{criterion.kind}</Badge></div>
@@ -658,10 +658,12 @@ export function CriteriaView() {
                 return (
                   <tr key={item.id}>
                     <td className="px-5 py-4"><div className="text-xs font-bold text-ocean">{item.name}</div><div className="mt-1 text-[9px] text-ink/40">{item.unit || "Tanpa satuan"}</div></td>
-                    <td className="px-5 py-4 text-xs text-ink/55">{item.attribute || "â€”"}</td>
+                    <td className="px-5 py-4 text-xs text-ink/55">{item.attribute || "-"}</td>
                     <td className="px-5 py-4"><Badge variant={item.kind === "benefit" ? "land" : "coral"}>{item.kind}</Badge></td>
                     <td className="px-5 py-4 font-data text-sm font-bold text-sea">{item.weight}%</td>
-                    <td className="px-5 py-4 font-data text-[10px] text-ink/50">{values.length ? `${formatNumber(Math.min(...values))} â€“ ${formatNumber(Math.max(...values))}` : "â€”"}</td>
+                    <td className="px-5 py-4 font-data text-xs text-ink/60">
+                      {values.length ? `${formatCriteriaValue(Math.min(...values), item.unit, item.id)} - ${formatCriteriaValue(Math.max(...values), item.unit, item.id)}` : "-"}
+                    </td>
                     <td className="px-5 py-4"><div className="flex justify-end gap-2"><Button size="icon" variant="ghost" onClick={() => { setEditing(item); setOpen(true); }} aria-label="Edit"><Edit3 className="h-4 w-4" /></Button><Button size="icon" variant="danger" onClick={() => remove(item)} aria-label="Hapus"><Trash2 className="h-4 w-4" /></Button></div></td>
                   </tr>
                 );
@@ -695,7 +697,7 @@ function CriteriaForm({ initial, onSave, onCancel }: {
     event.preventDefault();
     if (name.trim().length < 3) return setError("Nama kriteria minimal 3 karakter.");
     const parsedWeight = Number(weight);
-    if (weight === "" || !Number.isFinite(parsedWeight) || parsedWeight < 0 || parsedWeight > 100) return setError("Bobot harus berada di antara 0â€“100.");
+    if (weight === "" || !Number.isFinite(parsedWeight) || parsedWeight < 0 || parsedWeight > 100) return setError("Bobot harus berada di antara 0-100.");
     onSave({ name: name.trim(), weight: parsedWeight, kind, attribute: attribute.trim(), unit: unit.trim() });
   }
 
@@ -754,7 +756,7 @@ export function AlternativesView() {
         }
       />
       <div className="mb-5 flex max-w-xs items-center">
-        <div className="relative w-full"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari alternatifâ€¦" className="pl-9" /></div>
+        <div className="relative w-full"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari alternatif..." className="pl-9" /></div>
       </div>
       <section className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
         {filtered.map((item) => (
@@ -962,7 +964,7 @@ function LandingMediaForm({ initial, onSave, onCancel }: {
       </Field>
       <Field label="Pilih Foto/Video" hint="Foto dan video ditampilkan 4:3. Video maksimal 75 MB agar halaman tetap ringan." className="sm:col-span-2">
         <label className={`inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-coral px-5 text-sm font-semibold text-white hover:bg-[#e85d00] ${processing ? "pointer-events-none opacity-60" : ""}`}>
-          <Upload className="h-4 w-4" /> {processing ? "Memprosesâ€¦" : "Pilih file"}
+          <Upload className="h-4 w-4" /> {processing ? "Memproses..." : "Pilih file"}
           <input
             type="file"
             accept="image/*,video/*"
@@ -1108,13 +1110,13 @@ function AlternativeForm({ initial, criteria, onSave, onCancel }: {
               <div>
                 <div className="mx-auto grid h-11 w-11 place-items-center rounded-xl bg-land text-ink"><Upload className="h-5 w-5" /></div>
                 <p className="mt-3 text-xs font-bold text-ocean">Belum ada foto lokasi</p>
-                <p className="mt-1 text-[11px] text-ink/55">JPG, PNG, atau WebP Â· maksimal 8 MB</p>
+                <p className="mt-1 text-[11px] text-ink/55">JPG, PNG, atau WebP · maksimal 8 MB</p>
               </div>
             </div>
           )}
           <div className="border-t border-orange-200 bg-white p-4">
             <label className={`inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-coral px-5 text-sm font-semibold text-white hover:bg-[#e85d00] ${isProcessingPhoto ? "pointer-events-none opacity-60" : ""}`}>
-              <Upload className="h-4 w-4" /> {isProcessingPhoto ? "Memproses fotoâ€¦" : photoUrl ? "Ganti foto" : "Pilih foto"}
+              <Upload className="h-4 w-4" /> {isProcessingPhoto ? "Memproses foto..." : photoUrl ? "Ganti foto" : "Pilih foto"}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
@@ -1270,35 +1272,114 @@ function AlternativeImport({ criteria, onImport }: {
 
 export function UsersView({ currentUserId }: { currentUserId: string }) {
   const users = useSmartlocStore((state) => state.users);
+  const addUser = useSmartlocStore((state) => state.addUser);
+  const updateUser = useSmartlocStore((state) => state.updateUser);
   const deleteUser = useSmartlocStore((state) => state.deleteUser);
-  function remove(user: User) {
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<User | null>(null);
+
+  async function remove(user: User) {
     if (user.id === currentUserId) return toast.error("Akun yang sedang digunakan tidak dapat dihapus.");
     if (!confirm(`Hapus pengguna "${user.name}"?`)) return;
-    deleteUser(user.id);
-    toast.success("Pengguna dihapus.");
+    try {
+      await deleteUser(user.id);
+      toast.success("Pengguna dihapus.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Pengguna gagal dihapus.";
+      toast.error(message);
+    }
   }
+
+  async function save(input: Omit<User, "id" | "createdAt">) {
+    const result = editing
+      ? await updateUser(editing.id, input)
+      : await addUser(input);
+    if (!result.ok) {
+      toast.error(result.message);
+      return;
+    }
+    toast.success(editing ? "Akun diperbarui." : "Akun ditambahkan.");
+    setOpen(false);
+    setEditing(null);
+  }
+
   return (
     <>
-      <PageIntro eyebrow="Akses Sistem" title="Manajemen Pengguna" description="Lihat akun yang terdaftar dan perannya pada prototipe SMARTLOC." />
+      <PageIntro
+        eyebrow="Akses Sistem"
+        title="Manajemen Pengguna"
+        description="Kelola akun admin dan user yang dapat masuk ke sistem SMARTLOC."
+        action={<Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4" /> Tambah Akun</Button>}
+      />
       <section className="overflow-hidden rounded-2xl border border-ocean/10 bg-white">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[680px] text-left">
-            <thead className="bg-mist/70 text-[9px] font-bold uppercase tracking-[.14em] text-ink/40"><tr><th className="px-5 py-4">Pengguna</th><th className="px-5 py-4">Peran</th><th className="px-5 py-4">Terdaftar</th><th className="px-5 py-4">Status</th><th className="px-5 py-4 text-right">Aksi</th></tr></thead>
+            <thead className="bg-mist/70 text-xs font-bold uppercase tracking-[.12em] text-ink/60"><tr><th className="px-5 py-4">Pengguna</th><th className="px-5 py-4">Peran</th><th className="px-5 py-4">Terdaftar</th><th className="px-5 py-4">Status</th><th className="px-5 py-4 text-right">Aksi</th></tr></thead>
             <tbody className="divide-y divide-ocean/7">
               {users.map((user) => (
                 <tr key={user.id}>
-                  <td className="px-5 py-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-ocean text-sm font-bold text-white">{user.name.charAt(0)}</div><div><div className="text-xs font-bold text-ocean">{user.name}</div><div className="mt-1 text-[9px] text-ink/40">{user.email}</div></div></div></td>
+                  <td className="px-5 py-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-ocean text-sm font-bold text-white">{user.name.charAt(0)}</div><div><div className="text-sm font-bold text-ocean">{user.name}</div><div className="mt-1 text-xs text-ink/60">{user.email}</div></div></div></td>
                   <td className="px-5 py-4"><Badge variant={user.role === "admin" ? "coral" : "sea"}>{user.role}</Badge></td>
-                  <td className="px-5 py-4 font-data text-[10px] text-ink/50">{new Date(user.createdAt).toLocaleDateString("id-ID")}</td>
-                  <td className="px-5 py-4"><span className="inline-flex items-center gap-2 text-[10px] font-bold text-[#55735d]"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Aktif</span></td>
-                  <td className="px-5 py-4 text-right"><Button size="icon" variant="danger" onClick={() => remove(user)} disabled={user.id === currentUserId}><Trash2 className="h-4 w-4" /></Button></td>
+                  <td className="px-5 py-4 font-data text-xs text-ink/65">{new Date(user.createdAt).toLocaleDateString("id-ID")}</td>
+                  <td className="px-5 py-4"><span className="inline-flex items-center gap-2 text-xs font-bold text-[#55735d]"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Aktif</span></td>
+                  <td className="px-5 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button size="icon" variant="ghost" onClick={() => { setEditing(user); setOpen(true); }} aria-label="Edit pengguna"><Edit3 className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="danger" onClick={() => remove(user)} disabled={user.id === currentUserId} aria-label="Hapus pengguna"><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+      <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) setEditing(null); }}>
+        <DialogContent title={editing ? "Edit Akun" : "Tambah Akun"} description="Akun dapat digunakan untuk login sebagai admin atau user.">
+          <UserForm initial={editing} onSave={save} onCancel={() => setOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </>
+  );
+}
+
+function UserForm({ initial, onSave, onCancel }: {
+  initial?: User | null;
+  onSave: (input: Omit<User, "id" | "createdAt">) => void | Promise<void>;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [email, setEmail] = useState(initial?.email ?? "");
+  const [password, setPassword] = useState(initial?.password || "");
+  const [role, setRole] = useState<Role>(initial?.role ?? "user");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (name.trim().length < 3) return toast.error("Nama minimal 3 karakter.");
+    if (!email.includes("@")) return toast.error("Email tidak valid.");
+    if (password.length < 6) return toast.error("Password minimal 6 karakter.");
+    await onSave({ name: name.trim(), email: email.trim(), password, role });
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <Field label="Nama Lengkap"><Input value={name} onChange={(event) => setName(event.target.value)} placeholder="Nama pengguna" /></Field>
+      <Field label="Email"><Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nama@email.com" /></Field>
+      <Field label="Password"><Input type="text" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Minimal 6 karakter" /></Field>
+      <Field label="Peran">
+        <div className="grid grid-cols-2 gap-2">
+          {(["user", "admin"] as Role[]).map((item) => (
+            <button key={item} type="button" onClick={() => setRole(item)} className={`rounded-xl border px-4 py-3 text-sm font-bold capitalize ${role === item ? "border-coral bg-coral text-white" : "border-orange-200 bg-white text-ink/65"}`}>
+              {item}
+            </button>
+          ))}
+        </div>
+      </Field>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={onCancel}>Batal</Button>
+        <Button type="submit">Simpan Akun</Button>
+      </div>
+    </form>
   );
 }
 
@@ -1326,11 +1407,11 @@ export function ExpertView({ isAdmin }: { isAdmin: boolean }) {
             <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2 text-sm font-extrabold text-ocean"><BrainCircuit className="h-5 w-5 shrink-0 text-coral" /> <span className="min-w-0 break-words">{selected.expertName}</span></div>
-                <p className="mt-1 text-xs font-medium text-ink/60">{selected.expertise} Â· {selected.source}</p>
+                <p className="mt-1 text-xs font-medium text-ink/60">{selected.expertise} · {selected.source}</p>
                 <p className="mt-3 max-w-3xl text-xs leading-6 text-ink/65">{selected.notes}</p>
               </div>
               <div className="flex min-w-0 w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center lg:w-auto lg:justify-end">
-                {datasets.length > 1 ? <select value={selected.id} onChange={(event) => setSelectedId(event.target.value)} className="h-11 w-full min-w-0 max-w-full rounded-xl border-orange-200 bg-white px-3 text-xs font-semibold text-ocean sm:w-auto sm:max-w-[360px] lg:max-w-[420px]" aria-label="Pilih dataset expert">{datasets.map((item) => <option key={item.id} value={item.id}>{item.expertName} â€” {item.source}</option>)}</select> : null}
+                {datasets.length > 1 ? <select value={selected.id} onChange={(event) => setSelectedId(event.target.value)} className="h-11 w-full min-w-0 max-w-full rounded-xl border-orange-200 bg-white px-3 text-xs font-semibold text-ocean sm:w-auto sm:max-w-[360px] lg:max-w-[420px]" aria-label="Pilih dataset expert">{datasets.map((item) => <option key={item.id} value={item.id}>{item.expertName} - {item.source}</option>)}</select> : null}
                 {isAdmin ? <Button size="sm" variant="danger" onClick={() => { if (confirm("Hapus dataset expert ini?")) deleteDataset(selected.id); }}><Trash2 className="h-3.5 w-3.5" /> Hapus dataset</Button> : null}
               </div>
             </div>
@@ -1350,7 +1431,7 @@ export function ExpertView({ isAdmin }: { isAdmin: boolean }) {
             <div className="mt-5 grid gap-3">
               {ranking?.map((item) => {
                 const alternative = selected.alternatives.find((alt) => alt.id === item.alternativeId);
-                return <div key={item.alternativeId} className="grid gap-3 rounded-xl border border-orange-100 p-4 sm:grid-cols-[48px_1fr_auto] sm:items-center"><div className={`grid h-10 w-10 place-items-center rounded-xl font-bold ${item.rank === 1 ? "bg-coral text-white" : "bg-mist text-ocean"}`}>{item.rank}</div><div><div className="text-sm font-extrabold text-ocean">{item.locationName}</div><div className="mt-1 text-xs text-ink/60">{alternative?.address}</div><div className="mt-2 flex flex-wrap gap-2">{selected.criteria.map((criterion) => <span key={criterion.id} className="rounded-lg bg-mist px-2 py-1 text-[10px] font-semibold text-ink/70">{criterion.name}: {formatNumber(alternative?.values[criterion.id] ?? 0)}</span>)}</div></div><div className="font-data text-xl font-extrabold text-sea">{formatScore(item.score)}</div></div>;
+                return <div key={item.alternativeId} className="grid gap-3 rounded-xl border border-orange-100 p-4 sm:grid-cols-[48px_1fr_auto] sm:items-center"><div className={`grid h-10 w-10 place-items-center rounded-xl font-bold ${item.rank === 1 ? "bg-coral text-white" : "bg-mist text-ocean"}`}>{item.rank}</div><div><div className="text-sm font-extrabold text-ocean">{item.locationName}</div><div className="mt-1 text-xs text-ink/60">{alternative?.address}</div><div className="mt-2 flex flex-wrap gap-2">{selected.criteria.map((criterion) => <span key={criterion.id} className="rounded-lg bg-mist px-2 py-1 text-[10px] font-semibold text-ink/70">{criterion.name}: {formatCriteriaValue(Number(alternative?.values[criterion.id] ?? 0), criterion.unit, criterion.id)}</span>)}</div></div><div className="font-data text-xl font-extrabold text-sea">{formatScore(item.score)}</div></div>;
               })}
             </div>
           </section>
@@ -1509,7 +1590,7 @@ export function ReportsView({ method, results, criteria }: {
       />
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
         <StatCard label="Alternatif" value={results.length} detail="Lokasi dalam laporan" icon={Building2} />
-        <StatCard label="Skor Tertinggi" value={results[0] ? formatScore(results[0].score) : "â€”"} detail={results[0]?.alternative.name ?? "Belum ada"} icon={Award} accent="coral" />
+        <StatCard label="Skor Tertinggi" value={results[0] ? formatScore(results[0].score) : "-"} detail={results[0]?.alternative.name ?? "Belum ada"} icon={Award} accent="coral" />
         <StatCard label="Bobot Total" value={`${criteria.reduce((sum, item) => sum + item.weight, 0)}%`} detail={`${criteria.length} kriteria aktif`} icon={ShieldCheck} accent="land" />
       </div>
       <section className="print-card overflow-hidden rounded-2xl border border-ocean/10 bg-white shadow-sm">

@@ -37,7 +37,9 @@ interface SmartlocState {
   updateLandingMedia: (id: string, item: Omit<LandingMedia, "id" | "createdAt">) => void;
   deleteLandingMedia: (id: string) => void;
   resetLandingMedia: () => void;
-  deleteUser: (id: string) => void;
+  addUser: (input: NewUser) => Promise<RegisterResult>;
+  updateUser: (id: string, input: NewUser) => Promise<RegisterResult>;
+  deleteUser: (id: string) => Promise<void>;
   resetDemo: () => void;
 }
 
@@ -243,12 +245,50 @@ export const useSmartlocStore = create<SmartlocState>()(
           set({ landingMedia: clone(seedLandingMedia) });
           syncWithApi("/api/landing-media-reset", { method: "POST" });
         },
-        deleteUser: (id) => {
+        addUser: async (input) => {
+          try {
+            const response = await apiRequest("/api/users", {
+              method: "POST",
+              token: get().apiToken ?? undefined,
+              body: JSON.stringify(input)
+            });
+            if (!response.user) return { ok: false, message: "Akun gagal ditambahkan." };
+            const user = { ...normalizeApiUser(response.user), password: input.password };
+            set((state) => ({ users: upsertUser(state.users, user), apiReady: true }));
+            return { ok: true, message: "Akun berhasil ditambahkan.", user };
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Akun gagal ditambahkan.";
+            return { ok: false, message };
+          }
+        },
+        updateUser: async (id, input) => {
+          try {
+            const response = await apiRequest(`/api/users/${id}`, {
+              method: "PUT",
+              token: get().apiToken ?? undefined,
+              body: JSON.stringify(input)
+            });
+            if (!response.user) return { ok: false, message: "Akun gagal diperbarui." };
+            const user = { ...normalizeApiUser(response.user), password: input.password };
+            set((state) => ({ users: upsertUser(state.users, user), apiReady: true }));
+            return { ok: true, message: "Akun berhasil diperbarui.", user };
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Akun gagal diperbarui.";
+            return { ok: false, message };
+          }
+        },
+        deleteUser: async (id) => {
+          const previous = get().users;
           set((state) => ({
             users: state.users.filter((item) => item.id !== id),
             sessionUserId: state.sessionUserId === id ? null : state.sessionUserId
           }));
-          syncWithApi(`/api/users/${id}`, { method: "DELETE" });
+          try {
+            await apiRequest(`/api/users/${id}`, { method: "DELETE", token: get().apiToken ?? undefined });
+          } catch (error) {
+            set({ users: previous });
+            throw error;
+          }
         },
         resetDemo: () => {
           set({
