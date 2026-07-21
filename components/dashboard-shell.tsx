@@ -50,6 +50,7 @@ export function DashboardShell() {
   const [view, setView] = useState<ViewId>("overview");
   const [mobileOpen, setMobileOpen] = useState(false);
   const results = useMemo(() => calculateRanking(method, criteria, alternatives), [method, criteria, alternatives]);
+  const smartOverviewResults = useMemo(() => calculateRanking("SMART", criteria, alternatives), [criteria, alternatives]);
 
   useEffect(() => {
     if (hasHydrated && !user) router.replace("/login");
@@ -146,7 +147,7 @@ export function DashboardShell() {
         </header>
 
         <main className="p-5 sm:p-8">
-          {view === "overview" ? <OverviewView user={user} results={results} onNavigate={changeView} /> : null}
+          {view === "overview" ? <OverviewView user={user} results={smartOverviewResults} onNavigate={changeView} /> : null}
           {view === "ranking" ? <RankingView method={method} setMethod={setMethod} results={results} criteria={criteria} /> : null}
           {view === "map" ? <MapView method={method} results={results} /> : null}
           {view === "criteria" ? <CriteriaView /> : null}

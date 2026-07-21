@@ -88,21 +88,23 @@ export function OverviewView({ user, results, onNavigate }: {
           <section className="rounded-2xl border border-ocean/10 bg-white p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-serif text-xl font-bold text-ocean">Ranking SMART Terkini</h3>
+                <h3 className="font-serif text-xl font-bold text-ocean">Tiga Lokasi Teratas SMART</h3>
                 <p className="mt-1 text-[10px] text-ink/45">Dihitung langsung dari data tersimpan.</p>
               </div>
               <Button size="sm" variant="outline" onClick={() => onNavigate("ranking")}>Verifikasi <ArrowRight className="h-3.5 w-3.5" /></Button>
             </div>
             <div className="mt-5 space-y-2">
-              {results.slice(0, 4).map((item) => (
-                <div key={item.alternative.id} className="flex items-center gap-4 rounded-xl bg-mist/70 p-3">
-                  <div className={`grid h-9 w-9 place-items-center rounded-xl font-data text-xs font-bold ${item.rank === 1 ? "bg-coral text-white" : "bg-white text-ocean"}`}>{item.rank}</div>
+              {results.slice(0, 3).map((item) => (
+                <button key={item.alternative.id} onClick={() => onNavigate("map")} className="group flex w-full items-center gap-4 rounded-xl bg-mist/70 p-3 text-left transition hover:bg-orange-50">
+                  <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl font-data text-xs font-bold ${item.rank === 1 ? "bg-coral text-white" : "bg-white text-ocean"}`}>{item.rank}</div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-xs font-bold text-ocean">{item.alternative.name}</div>
-                    <div className="mt-1 truncate text-xs text-ink/60">{item.alternative.address}</div>
+                    <div className="truncate text-sm font-bold text-ocean group-hover:text-sea">{item.alternative.name}</div>
+                    <div className="mt-1 truncate text-xs font-semibold text-ink/60">
+                      {formatCriteriaValue(Number(item.alternative.values.rent ?? 0), "Rp", "rent")}/bulan · {formatCriteriaValue(Number(item.alternative.values.distance ?? 0), "km", "distance")}
+                    </div>
                   </div>
                   <div className="font-data text-xs font-bold text-sea">{formatScore(item.score)}</div>
-                </div>
+                </button>
               ))}
             </div>
           </section>
