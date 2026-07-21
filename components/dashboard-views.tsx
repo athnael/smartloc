@@ -316,20 +316,59 @@ function CalculationDetail({ method, result, results, criteria }: {
   }
 
   function tableRowClass(item: RankingResult) {
-    return isSelected(item) ? "bg-orange-50 font-extrabold text-ocean" : "bg-white text-ink/75";
+    return isSelected(item)
+      ? "bg-[#fff1cf] font-extrabold text-ocean shadow-[inset_7px_0_0_#ff5f00]"
+      : "bg-white text-ink/75";
   }
 
   const tableHeadClass = "bg-ocean px-3 py-3 text-left text-[10px] font-black uppercase tracking-[.12em] text-white";
   const tableCellClass = "border-b border-orange-100 px-3 py-3 text-xs";
+  const selectedCellClass = "bg-[#fff1cf]";
+
+  function rowCellClass(item: RankingResult, extra = "") {
+    return `${tableCellClass} ${isSelected(item) ? selectedCellClass : ""} ${extra}`;
+  }
+
+  function NumberCell({ item, children }: { item: RankingResult; children: React.ReactNode }) {
+    return (
+      <td className={rowCellClass(item)}>
+        {isSelected(item) ? (
+          <span className="inline-flex min-w-9 items-center justify-center rounded-full bg-coral px-2 py-1 font-data text-[11px] font-black text-white shadow-sm">
+            {children}
+          </span>
+        ) : children}
+      </td>
+    );
+  }
+
+  function AlternativeNameCell({ item }: { item: RankingResult }) {
+    return (
+      <td className={rowCellClass(item, "min-w-[220px]")}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span>{item.alternative.name}</span>
+          {isSelected(item) ? (
+            <span className="rounded-full bg-coral px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-white shadow-sm">
+              Sedang dihitung
+            </span>
+          ) : null}
+        </div>
+      </td>
+    );
+  }
 
   return (
     <div className="space-y-5">
-      <section className="rounded-2xl bg-ocean p-5 text-white">
+      <section className="rounded-2xl border-2 border-coral bg-gradient-to-br from-[#ff6a00] via-coral to-ocean p-5 text-white shadow-xl shadow-orange-200/50">
         <div className="grid gap-4 md:grid-cols-[1fr_auto_auto] md:items-center">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-[.16em] text-white/55">Lokasi yang dihitung</div>
-            <h3 className="mt-2 text-xl font-extrabold">{result.alternative.name}</h3>
+            <div className="inline-flex rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[.16em] text-coral shadow-sm">
+              Fokus perhitungan
+            </div>
+            <h3 className="mt-3 text-2xl font-extrabold md:text-3xl">{result.alternative.name}</h3>
             <p className="mt-1 text-xs leading-5 text-white/65">{result.alternative.address}</p>
+            <p className="mt-3 max-w-xl rounded-xl bg-white/15 px-4 py-3 text-xs font-semibold leading-6 text-white/90">
+              Baris berwarna kuning-oranye pada setiap tabel menunjukkan bahwa nilai tersebut sedang dihitung untuk lokasi ini.
+            </p>
           </div>
           <div className="rounded-2xl bg-white/10 px-5 py-4">
             <div className="text-[10px] font-bold uppercase tracking-[.12em] text-white/55">Peringkat</div>
@@ -393,10 +432,10 @@ function CalculationDetail({ method, result, results, criteria }: {
             <tbody>
               {results.map((item, index) => (
                 <tr key={item.alternative.id} className={tableRowClass(item)}>
-                  <td className={tableCellClass}>{index + 1}</td>
-                  <td className={`${tableCellClass} min-w-[180px]`}>{item.alternative.name}</td>
+                  <NumberCell item={item}>{index + 1}</NumberCell>
+                  <AlternativeNameCell item={item} />
                   {criteriaMeta.map(({ criterion }) => (
-                    <td key={criterion.id} className={`${tableCellClass} font-data`}>{formatNumber(rawValue(item, criterion.id))}</td>
+                    <td key={criterion.id} className={rowCellClass(item, "font-data")}>{formatNumber(rawValue(item, criterion.id))}</td>
                   ))}
                 </tr>
               ))}
@@ -437,10 +476,10 @@ function CalculationDetail({ method, result, results, criteria }: {
             <tbody>
               {results.map((item, index) => (
                 <tr key={item.alternative.id} className={tableRowClass(item)}>
-                  <td className={tableCellClass}>{index + 1}</td>
-                  <td className={`${tableCellClass} min-w-[180px]`}>{item.alternative.name}</td>
+                  <NumberCell item={item}>{index + 1}</NumberCell>
+                  <AlternativeNameCell item={item} />
                   {criteriaMeta.map(({ criterion }) => (
-                    <td key={criterion.id} className={`${tableCellClass} font-data text-sea`}>{formatScore(item.utilities[criterion.id] ?? 0)}</td>
+                    <td key={criterion.id} className={rowCellClass(item, "font-data text-sea")}>{formatScore(item.utilities[criterion.id] ?? 0)}</td>
                   ))}
                 </tr>
               ))}
@@ -464,10 +503,10 @@ function CalculationDetail({ method, result, results, criteria }: {
             <tbody>
               {results.map((item, index) => (
                 <tr key={item.alternative.id} className={tableRowClass(item)}>
-                  <td className={tableCellClass}>{index + 1}</td>
-                  <td className={`${tableCellClass} min-w-[180px]`}>{item.alternative.name}</td>
+                  <NumberCell item={item}>{index + 1}</NumberCell>
+                  <AlternativeNameCell item={item} />
                   {criteriaMeta.map(({ criterion }) => (
-                    <td key={criterion.id} className={`${tableCellClass} font-data text-coral`}>{formatScore(weightedValue(item, criterion.id))}</td>
+                    <td key={criterion.id} className={rowCellClass(item, "font-data text-coral")}>{formatScore(weightedValue(item, criterion.id))}</td>
                   ))}
                 </tr>
               ))}
@@ -494,10 +533,10 @@ function CalculationDetail({ method, result, results, criteria }: {
                 const total = parts.reduce((sum, value) => sum + value, 0);
                 return (
                   <tr key={item.alternative.id} className={tableRowClass(item)}>
-                    <td className={tableCellClass}>#{item.rank}</td>
-                    <td className={`${tableCellClass} min-w-[180px]`}>{item.alternative.name}</td>
-                    <td className={`${tableCellClass} min-w-[280px] font-data text-[11px]`}>{parts.map(formatScore).join(" + ")}</td>
-                    <td className={`${tableCellClass} font-data font-black text-coral`}>{formatScore(total)}</td>
+                    <NumberCell item={item}>#{item.rank}</NumberCell>
+                    <AlternativeNameCell item={item} />
+                    <td className={rowCellClass(item, "min-w-[280px] font-data text-[11px]")}>{parts.map(formatScore).join(" + ")}</td>
+                    <td className={rowCellClass(item, "font-data font-black text-coral")}>{formatScore(total)}</td>
                   </tr>
                 );
               })}
