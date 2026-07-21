@@ -1581,21 +1581,96 @@ export function ReportsView({ method, results, criteria }: {
   results: RankingResult[];
   criteria: Criteria[];
 }) {
+  const smart = calculateRanking("SMART", criteria, useSmartlocStore.getState().alternatives);
+  const saw = calculateRanking("SAW", criteria, useSmartlocStore.getState().alternatives);
+  const scoreFor = (items: RankingResult[], id: string) => items.find((item) => item.alternative.id === id)?.score ?? 0;
+  const reportRows = results.map((item) => ({
+    item,
+    smartScore: scoreFor(smart, item.alternative.id),
+    sawScore: scoreFor(saw, item.alternative.id)
+  }));
+
   async function exportPdf() {
     const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF();
+    const doc = new jsPDF({ orientation: "landscape" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 10;
+    const usableWidth = pageWidth - margin * 2;
+    const fixedColumns = [
+      { label: "Rank", width: 13 },
+      { label: "Lokasi", width: 42 },
+      { label: "Koordinat", width: 31 }
+    ];
+    const scoreColumns = [
+      { label: "SMART", width: 18 },
+      { label: "SAW", width: 18 },
+      { label: `Skor ${method}`, width: 23 }
+    ];
+    const criteriaWidth = Math.max(20, (usableWidth - fixedColumns.reduce((sum, col) => sum + col.width, 0) - scoreColumns.reduce((sum, col) => sum + col.width, 0)) / Math.max(1, criteria.length));
+    const columns = [
+      ...fixedColumns,
+      ...criteria.map((criterion) => ({ label: criterion.name, width: criteriaWidth, criterion })),
+      ...scoreColumns
+    ];
+    const rowHeight = 9;
+
+    function short(text: string, max = 22) {
+      return text.length > max ? `${text.slice(0, max - 3)}...` : text;
+    }
+
+    function drawHeader(y: number) {
+      doc.setFillColor(91, 42, 0);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(6);
+      let x = margin;
+      columns.forEach((column) => {
+        doc.rect(x, y, column.width, rowHeight, "F");
+        doc.text(short(column.label.toUpperCase(), 16), x + 2, y + 5.8, { maxWidth: column.width - 3 });
+        x += column.width;
+      });
+    }
+
     doc.setFont("helvetica", "bold");
     doc.setFontSize(18);
-    doc.text(`SMARTLOC - Laporan ${method}`, 18, 22);
+    doc.text(`SMARTLOC - Laporan ${method}`, margin, 16);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(`Dibuat ${new Date().toLocaleString("id-ID")} | ${results.length} alternatif`, 18, 29);
-    let y = 42;
-    results.forEach((item) => {
-      doc.setFont("helvetica", item.rank === 1 ? "bold" : "normal");
-      doc.text(`${item.rank}. ${item.alternative.name}`, 18, y);
-      doc.text(formatScore(item.score), 180, y, { align: "right" });
-      y += 8;
+    doc.text(`Dibuat ${new Date().toLocaleString("id-ID")} | ${results.length} alternatif | nilai kriteria lengkap`, margin, 23);
+
+    let y = 32;
+    drawHeader(y);
+    y += rowHeight;
+
+    reportRows.forEach(({ item, smartScore, sawScore }, index) => {
+      if (y + rowHeight > pageHeight - 12) {
+        doc.addPage("landscape");
+        y = 16;
+        drawHeader(y);
+        y += rowHeight;
+      }
+
+      doc.setFillColor(item.rank === 1 ? 255 : 255, item.rank === 1 ? 244 : 255, item.rank === 1 ? 219 : 255);
+      doc.setTextColor(67, 34, 0);
+      doc.setFont("helvetica", item.rank <= 3 ? "bold" : "normal");
+      doc.setFontSize(6.5);
+      let x = margin;
+      const values = [
+        `#${item.rank}`,
+        short(item.alternative.name, 24),
+        `${item.alternative.latitude.toFixed(4)}, ${item.alternative.longitude.toFixed(4)}`,
+        ...criteria.map((criterion) => formatCriteriaValue(Number(item.alternative.values[criterion.id] ?? 0), criterion.unit, criterion.id)),
+        formatScore(smartScore),
+        formatScore(sawScore),
+        formatScore(item.score)
+      ];
+      columns.forEach((column, colIndex) => {
+        doc.rect(x, y, column.width, rowHeight, index % 2 === 0 || item.rank === 1 ? "F" : "S");
+        doc.text(short(String(values[colIndex] ?? ""), colIndex === 1 ? 24 : 14), x + 2, y + 5.8, { maxWidth: column.width - 3 });
+        x += column.width;
+      });
+      y += rowHeight;
     });
     doc.save(`smartloc-ranking-${method.toLowerCase()}.pdf`);
     toast.success("Laporan PDF diunduh.");
@@ -1603,23 +1678,34 @@ export function ReportsView({ method, results, criteria }: {
 
   async function exportExcel() {
     const XLSX = await import("xlsx");
-    const rows = results.map((item) => ({
+    const rows = reportRows.map(({ item, smartScore, sawScore }) => ({
       Peringkat: item.rank,
       Lokasi: item.alternative.name,
       Alamat: item.alternative.address,
+      Latitude: item.alternative.latitude,
+      Longitude: item.alternative.longitude,
       Metode: method,
-      Skor: item.score,
-      ...Object.fromEntries(criteria.map((criterion) => [criterion.name, item.alternative.values[criterion.id] ?? 0]))
+      ...Object.fromEntries(criteria.map((criterion) => [
+        `${criterion.name}${criterion.unit ? ` (${criterion.unit})` : ""}`,
+        formatCriteriaValue(Number(item.alternative.values[criterion.id] ?? 0), criterion.unit, criterion.id)
+      ])),
+      SkorSMART: smartScore,
+      SkorSAW: sawScore,
+      SkorTerpilih: item.score
+    }));
+    const criteriaRows = criteria.map((criterion) => ({
+      Kriteria: criterion.name,
+      Bobot: criterion.weight,
+      Atribut: criterion.kind === "benefit" ? "Benefit" : "Cost",
+      Satuan: criterion.unit,
+      Keterangan: criterion.attribute ?? ""
     }));
     const workbook = XLSX.utils.book_new();
-    const sheet = XLSX.utils.json_to_sheet(rows);
-    XLSX.utils.book_append_sheet(workbook, sheet, `Ranking ${method}`);
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(criteriaRows), "Kriteria");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(rows), `Ranking Lengkap`);
     XLSX.writeFile(workbook, `smartloc-ranking-${method.toLowerCase()}.xlsx`);
     toast.success("Laporan Excel diunduh.");
   }
-
-  const smart = calculateRanking("SMART", criteria, useSmartlocStore.getState().alternatives);
-  const saw = calculateRanking("SAW", criteria, useSmartlocStore.getState().alternatives);
 
   return (
     <>
@@ -1640,16 +1726,17 @@ export function ReportsView({ method, results, criteria }: {
           <Badge variant="coral">Metode {method}</Badge>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] text-left">
-            <thead className="bg-mist/70 text-[9px] font-bold uppercase tracking-[.14em] text-ink/40"><tr><th className="px-6 py-4">Rank</th><th className="px-6 py-4">Lokasi</th><th className="px-6 py-4">Koordinat</th><th className="px-6 py-4">SMART</th><th className="px-6 py-4">SAW</th><th className="px-6 py-4 text-right">Skor terpilih</th></tr></thead>
+          <table className="w-full min-w-[1080px] text-left">
+            <thead className="bg-mist/70 text-[9px] font-bold uppercase tracking-[.14em] text-ink/40"><tr><th className="px-6 py-4">Rank</th><th className="px-6 py-4">Lokasi</th><th className="px-6 py-4">Koordinat</th>{criteria.map((criterion) => <th key={criterion.id} className="px-6 py-4">{criterion.name}</th>)}<th className="px-6 py-4">SMART</th><th className="px-6 py-4">SAW</th><th className="px-6 py-4 text-right">Skor terpilih</th></tr></thead>
             <tbody className="divide-y divide-ocean/7">
-              {results.map((item) => (
+              {reportRows.map(({ item, smartScore, sawScore }) => (
                 <tr key={item.alternative.id}>
                   <td className="px-6 py-4 font-data text-xs font-bold text-ocean">#{item.rank}</td>
                   <td className="px-6 py-4"><div className="text-xs font-bold text-ocean">{item.alternative.name}</div><div className="mt-1 max-w-xs truncate text-[9px] text-ink/40">{item.alternative.address}</div></td>
                   <td className="px-6 py-4 font-data text-[9px] text-ink/45">{item.alternative.latitude.toFixed(4)}, {item.alternative.longitude.toFixed(4)}</td>
-                  <td className="px-6 py-4 font-data text-xs text-ink/55">{formatScore(smart.find((x) => x.alternative.id === item.alternative.id)?.score ?? 0)}</td>
-                  <td className="px-6 py-4 font-data text-xs text-ink/55">{formatScore(saw.find((x) => x.alternative.id === item.alternative.id)?.score ?? 0)}</td>
+                  {criteria.map((criterion) => <td key={criterion.id} className="px-6 py-4 font-data text-xs font-semibold text-ink/65">{formatCriteriaValue(Number(item.alternative.values[criterion.id] ?? 0), criterion.unit, criterion.id)}</td>)}
+                  <td className="px-6 py-4 font-data text-xs text-ink/55">{formatScore(smartScore)}</td>
+                  <td className="px-6 py-4 font-data text-xs text-ink/55">{formatScore(sawScore)}</td>
                   <td className="px-6 py-4 text-right font-data text-sm font-bold text-sea">{formatScore(item.score)}</td>
                 </tr>
               ))}
