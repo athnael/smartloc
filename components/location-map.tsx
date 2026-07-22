@@ -68,6 +68,7 @@ function ManadoOpenStreetMap({ results, selectedId, onSelect }: {
   const mapElement = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const markersRef = useRef<Record<string, import("leaflet").Marker>>({});
+  const markerLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,10 +79,32 @@ function ManadoOpenStreetMap({ results, selectedId, onSelect }: {
       const map = L.map(mapElement.current, { zoomControl: true, attributionControl: true })
         .setView([1.486, 124.849], 12);
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
+        attribution: "OpenStreetMap contributors",
         maxZoom: 19
       }).addTo(map);
       mapRef.current = map;
+      markerLayerRef.current = L.layerGroup().addTo(map);
+    }
+    createMap();
+    return () => {
+      cancelled = true;
+      mapRef.current?.remove();
+      mapRef.current = null;
+      markerLayerRef.current = null;
+      markersRef.current = {};
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function renderMarkers() {
+      if (!mapRef.current) return;
+      const L = await import("leaflet");
+      if (cancelled || !mapRef.current) return;
+      const layer = markerLayerRef.current ?? L.layerGroup().addTo(mapRef.current);
+      markerLayerRef.current = layer;
+      layer.clearLayers();
+      markersRef.current = {};
       const bounds: [number, number][] = [];
       results.forEach((item) => {
         const icon = L.divIcon({
@@ -91,7 +114,7 @@ function ManadoOpenStreetMap({ results, selectedId, onSelect }: {
           iconAnchor: [18, 18]
         });
         const marker = L.marker([item.alternative.latitude, item.alternative.longitude], { icon })
-          .addTo(map)
+          .addTo(layer)
           .bindPopup(`
             <div style="width:230px">
               <img src="${escapeHtml(item.alternative.photoUrl)}" alt="${escapeHtml(item.alternative.name)}" style="width:100%;height:110px;object-fit:cover;border-radius:12px;margin-bottom:8px" />
@@ -104,15 +127,10 @@ function ManadoOpenStreetMap({ results, selectedId, onSelect }: {
         markersRef.current[item.alternative.id] = marker;
         bounds.push([item.alternative.latitude, item.alternative.longitude]);
       });
-      if (bounds.length > 1) map.fitBounds(bounds, { padding: [45, 45] });
+      if (bounds.length > 1) mapRef.current.fitBounds(bounds, { padding: [45, 45] });
     }
-    createMap();
-    return () => {
-      cancelled = true;
-      mapRef.current?.remove();
-      mapRef.current = null;
-      markersRef.current = {};
-    };
+    renderMarkers();
+    return () => { cancelled = true; };
   }, [results, onSelect]);
 
   useEffect(() => {
