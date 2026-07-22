@@ -114,7 +114,12 @@ export function DashboardShell() {
           ))}
         </nav>
         <div className="space-y-1 border-t border-white/10 pt-4">
-          <button onClick={() => { resetDemo(); toast.success("Data demo dikembalikan."); router.push("/"); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-bold text-white/55 hover:bg-white/10 hover:text-white">
+          <button onClick={() => {
+            if (!confirm("Reset data demo akan mengganti data pengguna, kriteria, alternatif, expert, dan galeri dengan data awal. Lanjutkan?")) return;
+            resetDemo();
+            toast.success("Data demo dikembalikan.");
+            router.push("/");
+          }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-bold text-white/55 hover:bg-white/10 hover:text-white">
             <RefreshCcw className="h-4 w-4" /> Reset data demo
           </button>
           <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-xs font-bold text-white/55 hover:bg-white/10 hover:text-white">
