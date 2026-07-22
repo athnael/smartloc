@@ -65,6 +65,17 @@ function StatCard({ label, value, detail, icon: Icon, accent = "sea" }: {
   );
 }
 
+function normalizeMatchText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\b(foto|photo|lokasi|kelurahan|smartloc)\b/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, "-");
+}
+
 export function OverviewView({ user, results, onNavigate }: {
   user: User;
   results: RankingResult[];
@@ -767,6 +778,7 @@ export function AlternativesView() {
   const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState<Alternative | null>(null);
   const [query, setQuery] = useState("");
+  const [bulkPhotoProcessing, setBulkPhotoProcessing] = useState(false);
   const filtered = alternatives.filter((item) => item.name.toLowerCase().includes(query.toLowerCase()));
 
   function save(input: Omit<Alternative, "id">) {
@@ -783,6 +795,44 @@ export function AlternativesView() {
     toast.success("Alternatif dihapus.");
   }
 
+  function matchAlternativeFromFile(file: File) {
+    const fileKey = normalizeMatchText(file.name.replace(/\.[^.]+$/, ""));
+    return alternatives.find((item) => {
+      const locationKey = normalizeMatchText(item.name);
+      return fileKey === locationKey || fileKey.includes(locationKey) || locationKey.includes(fileKey);
+    });
+  }
+
+  async function uploadBulkPhotos(files: FileList | null) {
+    const selectedFiles = Array.from(files ?? []);
+    if (!selectedFiles.length) return;
+    setBulkPhotoProcessing(true);
+    let updated = 0;
+    let skipped = 0;
+
+    for (const file of selectedFiles) {
+      const alternative = matchAlternativeFromFile(file);
+      const validType = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+      if (!alternative || !validType || file.size > 8 * 1024 * 1024) {
+        skipped += 1;
+        continue;
+      }
+
+      try {
+        const uploaded = await uploadMediaFile(file, "alternatives").catch(() => null);
+        const photoUrl = uploaded ?? await compressAlternativePhoto(file);
+        updateAlternative(alternative.id, { ...alternative, photoUrl });
+        updated += 1;
+      } catch {
+        skipped += 1;
+      }
+    }
+
+    setBulkPhotoProcessing(false);
+    if (updated) toast.success(`${updated} foto lokasi berhasil dipasang.`);
+    if (skipped) toast.error(`${skipped} foto dilewati. Pastikan nama file sama dengan nama lokasi dan ukuran maksimal 8 MB.`);
+  }
+
   return (
     <>
       <PageIntro
@@ -792,10 +842,30 @@ export function AlternativesView() {
         action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setImportOpen(true)}><Upload className="h-4 w-4" /> Impor Excel</Button>
+            <label className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border border-ocean/10 bg-white px-5 text-sm font-semibold text-ocean shadow-sm transition hover:border-coral hover:text-coral">
+              <ImagePlus className="h-4 w-4" /> {bulkPhotoProcessing ? "Memasang foto..." : "Upload Foto Massal"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                multiple
+                className="sr-only"
+                disabled={bulkPhotoProcessing}
+                onChange={(event) => {
+                  void uploadBulkPhotos(event.target.files);
+                  event.target.value = "";
+                }}
+              />
+            </label>
             <Button onClick={() => { setEditing(null); setOpen(true); }}><Plus className="h-4 w-4" /> Tambah Alternatif</Button>
           </div>
         }
       />
+      <div className="mb-5 rounded-2xl border border-orange-100 bg-white p-4 text-sm leading-6 text-ink/65">
+        Untuk upload foto massal, beri nama file sesuai nama lokasi, contoh:
+        <span className="font-data font-bold text-ocean"> wenang-utara.jpg</span>,
+        <span className="font-data font-bold text-ocean"> bahu.png</span>, atau
+        <span className="font-data font-bold text-ocean"> titiwungen-selatan.webp</span>.
+      </div>
       <div className="mb-5 flex max-w-xs items-center">
         <div className="relative w-full"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" /><Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Cari alternatif..." className="pl-9" /></div>
       </div>
