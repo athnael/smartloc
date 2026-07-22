@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { seedAlternatives, seedCriteria, seedExpertDatasets, seedLandingMedia, seedUsers } from "./seed";
-import { isSupabaseConfigured, readSupabaseDatabase, writeSupabaseDatabase } from "./supabase-db";
+import { isSupabaseConfigured, readSupabaseDatabase, writeSupabaseDatabase, writeSupabaseUsers } from "./supabase-db";
 import type { Alternative, Criteria, ExpertDataset, LandingMedia, User } from "./types";
 
 export interface SmartlocDatabase {
@@ -76,6 +76,17 @@ export async function updateDatabase(mutator: (database: SmartlocDatabase) => vo
   await mutator(database);
   await writeDatabase(database);
   return database;
+}
+
+export async function updateUsers(mutator: (users: User[]) => void | Promise<void>) {
+  const database = await readDatabase();
+  await mutator(database.users);
+  if (isSupabaseConfigured()) {
+    await writeSupabaseUsers(database.users);
+  } else {
+    await writeDatabase(database);
+  }
+  return database.users;
 }
 
 export function createId(prefix: string) {

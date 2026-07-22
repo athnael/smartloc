@@ -237,14 +237,7 @@ export async function readSupabaseDatabase(): Promise<SupabaseSmartlocDatabase> 
 
 export async function writeSupabaseDatabase(input: SupabaseSmartlocDatabase) {
   const database = await persistMediaUrls(input);
-  await replaceTable<SupabaseUserRow>("smartloc_users", database.users.map((item) => ({
-    id: item.id,
-    name: item.name,
-    email: item.email,
-    password: item.password,
-    role: item.role,
-    created_at: item.createdAt
-  })));
+  await writeSupabaseUsers(database.users);
   await replaceTable<SupabaseCriteriaRow>("smartloc_criteria", database.criteria.map((item) => ({
     id: item.id,
     name: item.name,
@@ -282,6 +275,17 @@ export async function writeSupabaseDatabase(input: SupabaseSmartlocDatabase) {
     url: item.url,
     poster_url: item.posterUrl ?? null,
     caption: item.caption,
+    created_at: item.createdAt
+  })));
+}
+
+export async function writeSupabaseUsers(users: User[]) {
+  await replaceTable<SupabaseUserRow>("smartloc_users", users.map((item) => ({
+    id: item.id,
+    name: item.name,
+    email: item.email,
+    password: item.password,
+    role: item.role,
     created_at: item.createdAt
   })));
 }

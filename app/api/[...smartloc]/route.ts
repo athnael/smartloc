@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { calculateRanking } from "@/lib/ranking";
-import { createId, createSeedDatabase, publicUser, readDatabase, updateDatabase, writeDatabase } from "@/lib/backend-db";
+import { createId, createSeedDatabase, publicUser, readDatabase, updateDatabase, updateUsers, writeDatabase } from "@/lib/backend-db";
 import { createSessionToken, requireUser, sessionCookieName } from "@/lib/backend-auth";
 import type { Alternative, Criteria, ExpertDataset, LandingMedia, RankingMethod, Role } from "@/lib/types";
 
@@ -184,14 +184,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (resource === "auth" && action === "register") {
     const parsed = await body(request, registerSchema);
     if (!parsed.success) return error("Data registrasi tidak valid.");
-    const created = await updateDatabase((database) => {
-      if (database.users.some((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase())) {
+    const created = await updateUsers((users) => {
+      if (users.some((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase())) {
         throw new Error("EMAIL_EXISTS");
       }
-      database.users.push({ ...parsed.data, id: createId("usr"), createdAt: new Date().toISOString() });
+      users.push({ ...parsed.data, id: createId("usr"), createdAt: new Date().toISOString() });
     }).catch((err) => err instanceof Error && err.message === "EMAIL_EXISTS" ? null : Promise.reject(err));
     if (!created) return error("Email sudah digunakan.", 409);
-    const user = created.users.find((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase());
+    const user = created.find((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase());
     return json({ ok: true, user: user ? publicUser(user) : null }, 201);
   }
 
@@ -220,14 +220,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
   if (resource === "users") {
     const parsed = await body(request, adminUserSchema);
     if (!parsed.success) return error("Data pengguna tidak valid.");
-    const created = await updateDatabase((db) => {
-      if (db.users.some((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase())) {
+    const created = await updateUsers((users) => {
+      if (users.some((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase())) {
         throw new Error("EMAIL_EXISTS");
       }
-      db.users.push({ ...parsed.data, id: createId("usr"), createdAt: new Date().toISOString() });
+      users.push({ ...parsed.data, id: createId("usr"), createdAt: new Date().toISOString() });
     }).catch((err) => err instanceof Error && err.message === "EMAIL_EXISTS" ? null : Promise.reject(err));
     if (!created) return error("Email sudah digunakan.", 409);
-    const user = created.users.find((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase());
+    const user = created.find((item) => item.email.toLowerCase() === parsed.data.email.toLowerCase());
     return json({ ok: true, user: user ? publicUser(user) : null }, 201);
   }
 
@@ -310,14 +310,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
   if (resource === "users") {
     const parsed = await body(request, adminUserSchema);
     if (!parsed.success) return error("Data pengguna tidak valid.");
-    const updated = await updateDatabase((db) => {
-      if (db.users.some((item) => item.id !== id && item.email.toLowerCase() === parsed.data.email.toLowerCase())) {
+    const updated = await updateUsers((users) => {
+      if (users.some((item) => item.id !== id && item.email.toLowerCase() === parsed.data.email.toLowerCase())) {
         throw new Error("EMAIL_EXISTS");
       }
-      db.users = db.users.map((item) => item.id === id ? { ...item, ...parsed.data, id, createdAt: item.createdAt } : item);
+      const index = users.findIndex((item) => item.id === id);
+      if (index === -1) throw new Error("NOT_FOUND");
+      users[index] = { ...users[index], ...parsed.data, id, createdAt: users[index].createdAt };
     }).catch((err) => err instanceof Error && err.message === "EMAIL_EXISTS" ? null : Promise.reject(err));
     if (!updated) return error("Email sudah digunakan.", 409);
-    const user = updated.users.find((item) => item.id === id);
+    const user = updated.find((item) => item.id === id);
     return json({ ok: true, user: user ? publicUser(user) : null });
   }
   if (resource === "alternatives") {
@@ -353,9 +355,17 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const auth = await requireUser(request, "admin");
   if (!auth.ok) return error(auth.message, auth.status);
 
+  if (resource === "users") {
+    await updateUsers((users) => {
+      const index = users.findIndex((item) => item.id === id);
+      if (index === -1) throw new Error("NOT_FOUND");
+      users.splice(index, 1);
+    }).catch((err) => err instanceof Error && err.message === "NOT_FOUND" ? null : Promise.reject(err));
+    return json({ ok: true });
+  }
+
   await updateDatabase((db) => {
-    if (resource === "users") db.users = db.users.filter((item) => item.id !== id);
-    else if (resource === "criteria") {
+    if (resource === "criteria") {
       db.criteria = db.criteria.filter((item) => item.id !== id);
       db.alternatives = db.alternatives.map((alternative) => {
         const values = { ...alternative.values };
