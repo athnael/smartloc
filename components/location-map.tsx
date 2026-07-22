@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GoogleMap, InfoWindowF, MarkerF, useJsApiLoader } from "@react-google-maps/api";
 import { MapPin, Navigation } from "lucide-react";
 import { Badge } from "./ui/badge";
@@ -69,6 +69,7 @@ function ManadoOpenStreetMap({ results, selectedId, onSelect }: {
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const markersRef = useRef<Record<string, import("leaflet").Marker>>({});
   const markerLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,6 +85,7 @@ function ManadoOpenStreetMap({ results, selectedId, onSelect }: {
       }).addTo(map);
       mapRef.current = map;
       markerLayerRef.current = L.layerGroup().addTo(map);
+      setMapReady(true);
     }
     createMap();
     return () => {
@@ -98,7 +100,7 @@ function ManadoOpenStreetMap({ results, selectedId, onSelect }: {
   useEffect(() => {
     let cancelled = false;
     async function renderMarkers() {
-      if (!mapRef.current) return;
+      if (!mapReady || !mapRef.current) return;
       const L = await import("leaflet");
       if (cancelled || !mapRef.current) return;
       const layer = markerLayerRef.current ?? L.layerGroup().addTo(mapRef.current);
@@ -131,16 +133,16 @@ function ManadoOpenStreetMap({ results, selectedId, onSelect }: {
     }
     renderMarkers();
     return () => { cancelled = true; };
-  }, [results, onSelect]);
+  }, [mapReady, results, onSelect]);
 
   useEffect(() => {
     const selected = results.find((item) => item.alternative.id === selectedId);
     const marker = selectedId ? markersRef.current[selectedId] : undefined;
-    if (selected && marker && mapRef.current) {
+    if (mapReady && selected && marker && mapRef.current) {
       mapRef.current.flyTo([selected.alternative.latitude, selected.alternative.longitude], 14, { duration: .6 });
       marker.openPopup();
     }
-  }, [selectedId, results]);
+  }, [mapReady, selectedId, results]);
 
   return (
     <div className="relative z-0 h-[480px] overflow-hidden rounded-2xl border border-orange-200 bg-mist">
