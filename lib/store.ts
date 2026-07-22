@@ -82,10 +82,10 @@ export const useSmartlocStore = create<SmartlocState>()(
             const data = response.data;
             set((state) => ({
               users: data.users.map(normalizeApiUser),
-              criteria: data.criteria,
-              alternatives: data.alternatives,
-              expertDatasets: data.expertDatasets,
-              landingMedia: data.landingMedia,
+              criteria: data.criteria.length ? data.criteria : state.criteria,
+              alternatives: data.alternatives.length ? data.alternatives : state.alternatives,
+              expertDatasets: data.expertDatasets.length ? data.expertDatasets : state.expertDatasets,
+              landingMedia: data.landingMedia.length ? data.landingMedia : state.landingMedia,
               apiReady: true
             }));
           } catch (error) {

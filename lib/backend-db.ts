@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { seedAlternatives, seedCriteria, seedExpertDatasets, seedLandingMedia, seedUsers } from "./seed";
-import { isSupabaseConfigured, readSupabaseDatabase, writeSupabaseDatabase, writeSupabaseUsers } from "./supabase-db";
+import { deleteSupabaseUser, isSupabaseConfigured, readSupabaseDatabase, upsertSupabaseUser, writeSupabaseDatabase, writeSupabaseUsers } from "./supabase-db";
 import type { Alternative, Criteria, ExpertDataset, LandingMedia, User } from "./types";
 
 export interface SmartlocDatabase {
@@ -87,6 +87,50 @@ export async function updateUsers(mutator: (users: User[]) => void | Promise<voi
     await writeDatabase(database);
   }
   return database.users;
+}
+
+export async function createUserRecord(input: Omit<User, "id" | "createdAt">) {
+  const database = await readDatabase();
+  if (database.users.some((item) => item.email.toLowerCase() === input.email.toLowerCase())) {
+    throw new Error("EMAIL_EXISTS");
+  }
+  const user: User = { ...input, id: createId("usr"), createdAt: new Date().toISOString() };
+  if (isSupabaseConfigured()) {
+    await upsertSupabaseUser(user);
+  } else {
+    database.users.push(user);
+    await writeDatabase(database);
+  }
+  return user;
+}
+
+export async function updateUserRecord(id: string, input: Omit<User, "id" | "createdAt">) {
+  const database = await readDatabase();
+  if (database.users.some((item) => item.id !== id && item.email.toLowerCase() === input.email.toLowerCase())) {
+    throw new Error("EMAIL_EXISTS");
+  }
+  const existing = database.users.find((item) => item.id === id);
+  if (!existing) throw new Error("NOT_FOUND");
+  const user: User = { ...existing, ...input, id, createdAt: existing.createdAt };
+  if (isSupabaseConfigured()) {
+    await upsertSupabaseUser(user);
+  } else {
+    database.users = database.users.map((item) => item.id === id ? user : item);
+    await writeDatabase(database);
+  }
+  return user;
+}
+
+export async function deleteUserRecord(id: string) {
+  const database = await readDatabase();
+  const exists = database.users.some((item) => item.id === id);
+  if (!exists) throw new Error("NOT_FOUND");
+  if (isSupabaseConfigured()) {
+    await deleteSupabaseUser(id);
+  } else {
+    database.users = database.users.filter((item) => item.id !== id);
+    await writeDatabase(database);
+  }
 }
 
 export function createId(prefix: string) {

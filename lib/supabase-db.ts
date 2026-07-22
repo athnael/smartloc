@@ -104,16 +104,27 @@ async function readTable<T>(table: string, order?: string) {
 }
 
 async function replaceTable<T extends { id: string }>(table: string, rows: T[]) {
-  await supabaseRequest(`${table}?id=neq.__smartloc_keep_none__`, {
-    method: "DELETE",
-    headers: { Prefer: "return=minimal" }
-  });
-  if (!rows.length) return;
+  if (!rows.length) {
+    await supabaseRequest(`${table}?id=neq.__smartloc_keep_none__`, {
+      method: "DELETE",
+      headers: { Prefer: "return=minimal" }
+    });
+    return;
+  }
+
   await supabaseRequest(`${table}?on_conflict=id`, {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify(rows)
   });
+
+  const incomingIds = new Set(rows.map((item) => item.id));
+  const existingRows = await supabaseRequest<Array<{ id: string }>>(`${table}?select=id`);
+  const obsoleteRows = existingRows.filter((item) => !incomingIds.has(item.id));
+  await Promise.all(obsoleteRows.map((item) => supabaseRequest(`${table}?id=eq.${encodeURIComponent(item.id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" }
+  })));
 }
 
 function publicStorageUrl(path: string) {
@@ -236,6 +247,14 @@ export async function readSupabaseDatabase(): Promise<SupabaseSmartlocDatabase> 
 }
 
 export async function writeSupabaseDatabase(input: SupabaseSmartlocDatabase) {
+  const current = await readSupabaseDatabase().catch(() => null);
+  if (current?.alternatives.length && !input.alternatives.length) {
+    throw new Error("Proteksi data aktif: penulisan yang akan mengosongkan alternatif dibatalkan.");
+  }
+  if (current?.criteria.length && !input.criteria.length) {
+    throw new Error("Proteksi data aktif: penulisan yang akan mengosongkan kriteria dibatalkan.");
+  }
+
   const database = await persistMediaUrls(input);
   await writeSupabaseUsers(database.users);
   await replaceTable<SupabaseCriteriaRow>("smartloc_criteria", database.criteria.map((item) => ({
@@ -288,4 +307,26 @@ export async function writeSupabaseUsers(users: User[]) {
     role: item.role,
     created_at: item.createdAt
   })));
+}
+
+export async function upsertSupabaseUser(user: User) {
+  await supabaseRequest("smartloc_users?on_conflict=id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      password: user.password,
+      role: user.role,
+      created_at: user.createdAt
+    })
+  });
+}
+
+export async function deleteSupabaseUser(id: string) {
+  await supabaseRequest(`smartloc_users?id=eq.${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Prefer: "return=minimal" }
+  });
 }
